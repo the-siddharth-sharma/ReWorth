@@ -93,9 +93,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           onClick={() => handleNav('discover')}
           className="flex items-center gap-3 text-left shrink-0 cursor-pointer"
         >
-          <div className="w-9 h-9 rounded-[2px] bg-[#0052FF] text-white flex items-center justify-center font-mono-num font-bold text-sm tracking-tighter">
-            RW
-          </div>
+          <img
+            src="/logo.png"
+            alt="ReWorth Logo"
+            className="w-9 h-9 rounded-[4px] object-contain shrink-0"
+          />
           <div>
             <div className="font-extrabold text-base leading-none text-[#0B0F19] tracking-tight uppercase">
               ReWorth
