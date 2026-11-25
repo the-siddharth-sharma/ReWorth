@@ -1,6 +1,4 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
 import { db } from './db.ts';
 import { estimateDivertedKg } from '../../shared/constants.ts';
 
@@ -8,37 +6,22 @@ export function hashPassword(password: string): string {
   return crypto.createHash('sha256').update(`reworth_salt_v1:${password}`).digest('hex');
 }
 
-function ensureSampleImages(): void {
-  if (process.env.VERCEL) {
-    // On Vercel, static sample SVGs are served directly from client/public/uploads/
-    return;
-  }
-  const repoRoot = fs.existsSync(path.resolve(process.cwd(), 'uploads'))
-    ? process.cwd()
-    : path.resolve(process.cwd(), '..');
-  const uploadsDir = path.join(repoRoot, 'uploads');
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-
-  const svgs: Record<string, string> = {
-    'sample-fabric.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#F3EFEA"/><rect x="45" y="55" width="140" height="150" rx="14" fill="#1B4332"/><rect x="130" y="75" width="140" height="130" rx="14" fill="#2D6A4F"/><rect x="215" y="45" width="140" height="160" rx="14" fill="#B07D4F"/><circle cx="115" cy="130" r="24" fill="#FAF8F5" opacity="0.25"/><circle cx="285" cy="125" r="24" fill="#FAF8F5" opacity="0.25"/><text x="200" y="236" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#4A5550">Sample Illustration: Cotton &amp; Denim Bolts</text></svg>`,
-    'sample-boxes.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#F3EFEA"/><rect x="65" y="95" width="130" height="110" rx="8" fill="#C69C6D" stroke="#8C6239" stroke-width="3"/><line x1="65" y1="125" x2="195" y2="125" stroke="#8C6239" stroke-width="3"/><rect x="180" y="65" width="150" height="140" rx="8" fill="#D7B38C" stroke="#8C6239" stroke-width="3"/><line x1="180" y1="100" x2="330" y2="100" stroke="#8C6239" stroke-width="3"/><text x="200" y="236" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#4A5550">Sample Illustration: Corrugated Cartons</text></svg>`,
-    'sample-electronics.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#F3EFEA"/><rect x="75" y="55" width="250" height="145" rx="12" fill="#1B4332"/><rect x="105" y="85" width="60" height="60" rx="6" fill="#2D6A4F" stroke="#52B788" stroke-width="2"/><circle cx="220" cy="115" r="20" fill="#D97706"/><circle cx="275" cy="115" r="14" fill="#52B788"/><rect x="105" y="162" width="190" height="12" rx="4" fill="#95D5B2"/><text x="200" y="236" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#4A5550">Sample Illustration: Electronics Components Kit</text></svg>`,
-    'sample-books.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#F3EFEA"/><rect x="90" y="145" width="220" height="40" rx="6" fill="#1B4332"/><rect x="105" y="102" width="195" height="40" rx="6" fill="#40916C"/><rect x="115" y="58" width="175" height="40" rx="6" fill="#B07D4F"/><text x="200" y="236" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#4A5550">Sample Illustration: Engineering Textbooks</text></svg>`,
-    'sample-wood.svg': `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260"><rect width="400" height="260" fill="#F3EFEA"/><rect x="65" y="125" width="270" height="36" rx="4" fill="#A47148" stroke="#6F4518" stroke-width="2"/><rect x="85" y="85" width="210" height="36" rx="4" fill="#BC8A5F" stroke="#6F4518" stroke-width="2"/><rect x="115" y="45" width="150" height="36" rx="4" fill="#D4A373" stroke="#6F4518" stroke-width="2"/><text x="200" y="236" text-anchor="middle" font-family="sans-serif" font-size="13" fill="#4A5550">Sample Illustration: Seasoned Teak &amp; Plywood Offcuts</text></svg>`,
-  };
-
-  for (const [filename, content] of Object.entries(svgs)) {
-    const filePath = path.join(uploadsDir, filename);
-    if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, content, 'utf8');
-    }
-  }
-}
+const SAMPLE_IMAGE_BY_ID: Record<string, string> = {
+  'sample-res-fabric': '/images/fabric-bolts.jpg',
+  'sample-res-boxes': '/images/cardboard-cartons.jpg',
+  'sample-res-electronics': '/images/arduino-kit.jpg',
+  'sample-res-books': '/images/engineering-books.jpg',
+  'sample-res-wood': '/images/wood-offcuts.jpg',
+  'sample-res-completed-jars': '/images/glass-jars.jpg',
+};
 
 export function seedIfEmpty(): void {
-  ensureSampleImages();
+  const migrateSampleImage = db.prepare(
+    `UPDATE resources SET image_url = ? WHERE id = ? AND (image_url IS NULL OR image_url LIKE '/uploads/sample-%')`
+  );
+  for (const [id, imageUrl] of Object.entries(SAMPLE_IMAGE_BY_ID)) {
+    migrateSampleImage.run(imageUrl, id);
+  }
 
   const existingCount = db.prepare('SELECT COUNT(*) as cnt FROM users').get() as { cnt: number };
   if (existingCount.cnt > 0) return;
@@ -193,7 +176,7 @@ export function seedIfEmpty(): void {
       77.5197,
       '2026-12-08',
       'this_week',
-      '/uploads/sample-fabric.svg',
+      '/images/fabric-bolts.jpg',
       'available',
       now,
     ],
@@ -217,7 +200,7 @@ export function seedIfEmpty(): void {
       77.5197,
       '2026-12-15',
       'this_month',
-      '/uploads/sample-boxes.svg',
+      '/images/cardboard-cartons.jpg',
       'available',
       now,
     ],
@@ -241,7 +224,7 @@ export function seedIfEmpty(): void {
       77.6408,
       '2026-12-20',
       'flexible',
-      '/uploads/sample-electronics.svg',
+      '/images/arduino-kit.jpg',
       'available',
       now,
     ],
@@ -265,7 +248,7 @@ export function seedIfEmpty(): void {
       77.6408,
       '2026-12-30',
       'flexible',
-      '/uploads/sample-books.svg',
+      '/images/engineering-books.jpg',
       'available',
       now,
     ],
@@ -289,7 +272,7 @@ export function seedIfEmpty(): void {
       77.6245,
       '2026-12-01',
       'urgent',
-      '/uploads/sample-wood.svg',
+      '/images/wood-offcuts.jpg',
       'available',
       now,
     ],
@@ -313,7 +296,7 @@ export function seedIfEmpty(): void {
       77.5824,
       '2026-11-18',
       'this_week',
-      null,
+      '/images/glass-jars.jpg',
       'completed',
       now,
     ],

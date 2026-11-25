@@ -47,6 +47,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const [reqNote, setReqNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   // Report modal inline
   const [showReport, setShowReport] = useState(false);
@@ -72,6 +73,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     setResource(null);
     setNeed(null);
     setCashTopUp(0);
+    setImgError(false);
 
     if (target.type === 'resource') {
       api
@@ -214,15 +216,19 @@ export const DetailModal: React.FC<DetailModalProps> = ({
           {resource && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5">
-                <div className="h-44 md:h-full rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE] overflow-hidden flex items-center justify-center">
-                  {resource.imageUrl ? (
+                <div className="h-44 md:h-full rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE] overflow-hidden flex items-center justify-center group">
+                  {resource.imageUrl && !imgError ? (
                     <img
                       src={resource.imageUrl}
                       alt={resource.title}
-                      className="w-full h-full object-cover"
+                      onError={() => setImgError(true)}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
                   ) : (
-                    <Package className="w-10 h-10 text-[#8A94A6]" />
+                    <div className="flex flex-col items-center justify-center text-[#8A94A6]">
+                      <Package className="w-10 h-10 mb-1" />
+                      <span className="font-mono-num text-[10px] uppercase">NO IMAGE PROVIDED</span>
+                    </div>
                   )}
                 </div>
                 <div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowUpRight, MapPin, Package } from 'lucide-react';
 import { haversineDistanceKm } from '../../../shared/matching.ts';
 import type { Resource, User } from '../../../shared/types.ts';
@@ -16,6 +16,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
   currentUser,
   onSelect,
 }) => {
+  const [imgError, setImgError] = useState(false);
   const distanceKm = currentUser
     ? haversineDistanceKm(currentUser.lat, currentUser.lng, resource.lat, resource.lng)
     : null;
@@ -56,11 +57,12 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
 
       {/* Image */}
       <div className="relative h-36 bg-[#F5F6F8] border-b border-[#E2E6EE] overflow-hidden">
-        {resource.imageUrl ? (
+        {resource.imageUrl && !imgError ? (
           <img
             src={resource.imageUrl}
             alt={resource.title}
-            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-[#8A94A6]">
