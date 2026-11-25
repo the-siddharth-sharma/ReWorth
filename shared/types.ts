@@ -21,7 +21,7 @@ export type TransferType = 'free' | 'exchange' | 'low_cost';
 export type UrgencyLevel = 'urgent' | 'this_week' | 'this_month' | 'flexible';
 export type ListingStatus = 'available' | 'reserved' | 'completed' | 'removed';
 export type NeedStatus = 'open' | 'fulfilled' | 'removed';
-export type ExchangeStatus = 'pending' | 'accepted' | 'completed' | 'rejected' | 'cancelled';
+export type ExchangeStatus = 'pending' | 'countered' | 'accepted' | 'completed' | 'rejected' | 'cancelled';
 
 export interface User {
   id: string;
@@ -136,6 +136,18 @@ export interface Exchange {
   requesterName: string;
   requestedQuantity: number;
   unit: string;
+  offeredResourceId?: string | null;
+  offeredResourceTitle?: string;
+  offeredResourceCategory?: ResourceCategory;
+  offeredResourceImageUrl?: string;
+  offeredResourceArea?: string;
+  offeredQuantity?: number | null;
+  offeredUnit?: string;
+  cashTopUpAmount?: number | null;
+  lastCounterBy?: string | null;
+  ownerConfirmed: boolean;
+  requesterConfirmed: boolean;
+  handoverOtp?: string | null;
   status: ExchangeStatus;
   initialNote: string;
   ownerNote?: string;

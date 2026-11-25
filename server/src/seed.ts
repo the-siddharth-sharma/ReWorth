@@ -9,6 +9,10 @@ export function hashPassword(password: string): string {
 }
 
 function ensureSampleImages(): void {
+  if (process.env.VERCEL) {
+    // On Vercel, static sample SVGs are served directly from client/public/uploads/
+    return;
+  }
   const repoRoot = fs.existsSync(path.resolve(process.cwd(), 'uploads'))
     ? process.cwd()
     : path.resolve(process.cwd(), '..');

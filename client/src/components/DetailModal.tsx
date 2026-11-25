@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Flag,
   ArrowRight,
+  ArrowLeftRight,
   Package,
 } from 'lucide-react';
 import { api } from '../api.ts';
@@ -14,6 +15,7 @@ import type { MatchResult, Need, Resource, User } from '../../../shared/types.ts
 
 interface DetailModalProps {
   target: { type: 'resource' | 'need'; id: string } | null;
+  allResources?: Resource[];
   currentUser: User | null;
   onClose: () => void;
   onRequireAuth: () => void;
@@ -23,6 +25,7 @@ interface DetailModalProps {
 
 export const DetailModal: React.FC<DetailModalProps> = ({
   target,
+  allResources = [],
   currentUser,
   onClose,
   onRequireAuth,
@@ -35,8 +38,12 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const [matches, setMatches] = useState<MatchResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Request exchange form
+  // Two-way barter / trade request form
+  const [tradeMode, setTradeMode] = useState<'barter' | 'direct'>('barter');
   const [reqQty, setReqQty] = useState<number>(1);
+  const [offeredResourceId, setOfferedResourceId] = useState<string>('');
+  const [offeredQty, setOfferedQty] = useState<number>(1);
+  const [cashTopUp, setCashTopUp] = useState<number>(0);
   const [reqNote, setReqNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -47,6 +54,14 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   const [reportDetails, setReportDetails] = useState('');
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  const myAvailableResources = currentUser
+    ? allResources.filter(
+        (r) => r.ownerId === currentUser.id && r.status === 'available' && r.id !== resource?.id
+      )
+    : [];
+
+  const selectedOfferedResource = myAvailableResources.find((r) => r.id === offeredResourceId) ?? null;
+
   useEffect(() => {
     if (!target) return;
     setLoading(true);
@@ -56,6 +71,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     setReportSuccess(false);
     setResource(null);
     setNeed(null);
+    setCashTopUp(0);
 
     if (target.type === 'resource') {
       api
@@ -64,6 +80,20 @@ export const DetailModal: React.FC<DetailModalProps> = ({
           setResource(res.resource);
           setMatches(res.matches);
           setReqQty(Math.min(res.resource.quantity, Math.max(1, Math.round(res.resource.quantity / 2))));
+          const ownList = currentUser
+            ? allResources.filter(
+                (r) => r.ownerId === currentUser.id && r.status === 'available' && r.id !== res.resource.id
+              )
+            : [];
+          if (ownList.length > 0 && res.resource.transferType !== 'free') {
+            setTradeMode('barter');
+            setOfferedResourceId(ownList[0].id);
+            setOfferedQty(Math.min(ownList[0].quantity, Math.max(1, Math.round(ownList[0].quantity / 2))));
+          } else {
+            setTradeMode(ownList.length > 0 ? 'barter' : 'direct');
+            setOfferedResourceId(ownList[0]?.id ?? '');
+            setOfferedQty(ownList[0] ? Math.min(ownList[0].quantity, 1) : 1);
+          }
         })
         .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load resource.'))
         .finally(() => setLoading(false));
@@ -77,7 +107,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
         .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load need.'))
         .finally(() => setLoading(false));
     }
-  }, [target]);
+  }, [target, currentUser, allResources]);
 
   if (!target) return null;
 
@@ -94,14 +124,23 @@ export const DetailModal: React.FC<DetailModalProps> = ({
     setSubmitting(true);
     setError(null);
     try {
+      const useBarter = tradeMode === 'barter' && Boolean(offeredResourceId);
       await api.createExchange({
         resourceId,
         needId,
         requestedQuantity: quantity,
+        offeredResourceId: useBarter ? offeredResourceId : null,
+        offeredQuantity: useBarter ? offeredQty : null,
+        cashTopUpAmount: cashTopUp || 0,
         initialNote: note,
       });
-      setSuccessMsg('Exchange request sent! You can coordinate pickup in the Exchanges tab.');
+      setSuccessMsg(
+        useBarter
+          ? 'Two-way barter proposal sent! Track counter-offers and OTP handover in the Exchanges tab.'
+          : 'Trade request sent! Track acceptance and OTP handover in the Exchanges tab.'
+      );
       setReqNote('');
+      setCashTopUp(0);
       onExchangeCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not create exchange request.');
@@ -132,36 +171,42 @@ export const DetailModal: React.FC<DetailModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl border border-[#E4DFD7] max-w-3xl w-full shadow-xl overflow-hidden my-auto">
-        <div className="px-6 py-4 bg-[#FAF8F5] border-b border-[#E4DFD7] flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-wide text-[#2D6A4F]">
-            {target.type === 'resource' ? 'Resource Details & Matched Needs' : 'Need Posting & Matched Resources'}
+    <div className="fixed inset-0 z-50 bg-[#060B18]/70 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] max-w-3xl w-full shadow-2xl overflow-hidden my-auto">
+        <div className="px-6 py-4 bg-[#060B18] text-[#F8FAFC] border-b border-[#1D2740] flex items-center justify-between">
+          <div className="font-mono-num text-[11px] font-semibold uppercase tracking-widest text-[#C7DBFF]">
+            {target.type === 'resource'
+              ? 'RESOURCE DETAILS // TWO-WAY B2B TRADE'
+              : 'NEED POSTING // MATCHED SURPLUS'}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#5C6460] hover:bg-[#E4DFD7]/50 cursor-pointer"
+            className="p-1.5 rounded-[2px] text-[#8A94A6] hover:bg-[#0E1528] hover:text-white cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-6 max-h-[80vh] overflow-y-auto space-y-5">
-          {loading && <div className="text-sm text-[#5C6460] py-8 text-center">Loading details...</div>}
+          {loading && (
+            <div className="font-mono-num text-xs uppercase text-[#5A6475] py-8 text-center">
+              LOADING RECORD...
+            </div>
+          )}
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+            <div className="p-3 rounded-[2px] bg-red-50 border border-red-200 text-sm text-red-800">
               {error}
             </div>
           )}
           {successMsg && (
-            <div className="p-3 rounded-lg bg-[#E8F3EC] border border-[#B7DFC5] text-sm text-[#1B4332] flex items-center gap-2">
+            <div className="p-3 rounded-[2px] bg-[#ECFDF5] border border-[#A7F3D0] text-sm text-[#047857] flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0" />
               <span>{successMsg}</span>
             </div>
           )}
           {reportSuccess && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-900">
+            <div className="p-3 rounded-[2px] bg-[#FFFBEB] border border-[#FDE68A] text-sm text-[#D97706]">
               Report submitted to the Moderation Queue. Thank you for keeping ReWorth safe.
             </div>
           )}
@@ -169,7 +214,7 @@ export const DetailModal: React.FC<DetailModalProps> = ({
           {resource && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-5">
-                <div className="h-44 md:h-full rounded-xl bg-[#F3EFEA] border border-[#E4DFD7] overflow-hidden flex items-center justify-center">
+                <div className="h-44 md:h-full rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE] overflow-hidden flex items-center justify-center">
                   {resource.imageUrl ? (
                     <img
                       src={resource.imageUrl}
@@ -177,39 +222,47 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <Package className="w-10 h-10 text-[#8A918D]" />
+                    <Package className="w-10 h-10 text-[#8A94A6]" />
                   )}
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2 mb-2">
-                    <span className="text-xs font-semibold text-[#2D6A4F]">{resource.category}</span>
+                    <span className="font-mono-num text-[11px] font-semibold uppercase text-[#0052FF]">
+                      {resource.category}
+                    </span>
                     {resource.isSample && (
-                      <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-[#F6EFE8] text-[#9C6B43] border border-[#E6D6C5]">
-                        Sample Data
+                      <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#F5F6F8] text-[#5A6475] border border-[#E2E6EE]">
+                        SAMPLE DATA
                       </span>
                     )}
-                    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-[#FAF8F5] border border-[#E4DFD7] capitalize">
-                      Status: {resource.status}
+                    <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                      STATUS: {resource.status}
                     </span>
                   </div>
 
-                  <h2 className="text-xl font-bold text-[#1D2420] mb-2">{resource.title}</h2>
-                  <p className="text-sm text-[#5C6460] mb-3">{resource.description}</p>
+                  <h2 className="text-xl font-extrabold text-[#0B0F19] mb-2">{resource.title}</h2>
+                  <p className="text-sm text-[#5A6475] mb-3">{resource.description}</p>
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs mb-3">
-                    <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                      <div className="text-[#5C6460] text-[10px]">Quantity Available</div>
-                      <div className="font-mono-num font-bold text-[#1D2420]">
+                    <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                      <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                        QUANTITY AVAILABLE
+                      </div>
+                      <div className="font-mono-num font-bold text-[#0B0F19] mt-0.5">
                         {resource.quantity} {resource.unit}
                       </div>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                      <div className="text-[#5C6460] text-[10px]">Condition</div>
-                      <div className="font-semibold text-[#1D2420]">{resource.condition}</div>
+                    <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                      <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                        CONDITION
+                      </div>
+                      <div className="font-semibold text-[#0B0F19] mt-0.5">{resource.condition}</div>
                     </div>
-                    <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                      <div className="text-[#5C6460] text-[10px]">Transfer Terms</div>
-                      <div className="font-semibold text-[#1B4332]">
+                    <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                      <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                        TRANSFER TERMS
+                      </div>
+                      <div className="font-semibold text-[#0052FF] mt-0.5">
                         {resource.transferType === 'free'
                           ? 'Free Pickup'
                           : resource.transferType === 'exchange'
@@ -219,22 +272,23 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="text-xs text-[#5C6460] space-y-1">
+                  <div className="text-xs text-[#5A6475] space-y-1">
                     <div className="flex items-center gap-1.5">
-                      <MapPin className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <MapPin className="w-3.5 h-3.5 text-[#0052FF]" />
                       <span>
-                        <strong>Pickup Area:</strong> {resource.area} · {resource.pickupInstructions}
+                        <strong className="text-[#0B0F19]">Pickup Area:</strong> {resource.area} ·{' '}
+                        {resource.pickupInstructions}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-[#2D6A4F]" />
+                      <Clock className="w-3.5 h-3.5 text-[#0052FF]" />
                       <span>
-                        <strong>Availability:</strong> {resource.availability} · Intended disposal:{' '}
-                        {resource.disposalDate}
+                        <strong className="text-[#0B0F19]">Availability:</strong>{' '}
+                        {resource.availability} · Intended disposal: {resource.disposalDate}
                       </span>
                     </div>
                     <div>
-                      <strong>Posted by:</strong> {resource.ownerName} (
+                      <strong className="text-[#0B0F19]">Posted by:</strong> {resource.ownerName} (
                       <span className="capitalize">{resource.ownerAccountType}</span>
                       {resource.ownerOrganization ? ` · ${resource.ownerOrganization}` : ''})
                     </div>
@@ -243,34 +297,65 @@ export const DetailModal: React.FC<DetailModalProps> = ({
               </div>
 
               {/* Safety Notice */}
-              <div className="p-3 rounded-xl bg-[#FAF8F5] border border-[#E4DFD7] flex flex-wrap items-center justify-between gap-2 text-xs text-[#5C6460]">
+              <div className="p-3 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE] flex flex-wrap items-center justify-between gap-2 text-xs text-[#5A6475]">
                 <span className="flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-[#9C6B43] shrink-0" />
-                  Owner confirmed non-hazardous. Always inspect condition and usability at pickup; no physical delivery is integrated.
+                  <ShieldAlert className="w-4 h-4 text-[#0052FF] shrink-0" />
+                  Owner confirmed non-hazardous. Both parties verify a 6-digit OTP at handover before inventory deducts.
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowReport(!showReport)}
-                  className="text-xs font-semibold text-[#991B1B] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="font-mono-num text-[11px] font-semibold uppercase text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Flag className="w-3.5 h-3.5" /> Report Unsafe Listing
                 </button>
               </div>
 
-              {/* Request Exchange Form */}
+              {/* Two-Way B2B Trade / Request Form */}
               {resource.status === 'available' && currentUser?.id !== resource.ownerId && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
                     handleRequestExchange(resource.id, null, reqQty, reqNote);
                   }}
-                  className="p-4 rounded-xl bg-[#E8F3EC]/55 border border-[#B7DFC5] space-y-3"
+                  className="p-4 rounded-[2px] bg-[#EEF4FF] border border-[#C7DBFF] space-y-3.5"
                 >
-                  <div className="text-sm font-bold text-[#1B4332]">Request This Resource</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-mono-num text-xs font-bold uppercase tracking-wider text-[#0052FF] flex items-center gap-1.5">
+                      <ArrowLeftRight className="w-4 h-4" />
+                      Propose B2B Barter or Direct Request
+                    </div>
+                    <div className="flex rounded-[2px] border border-[#C7DBFF] bg-white p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setTradeMode('barter')}
+                        className={`px-2.5 py-1 rounded-[2px] font-mono-num text-[11px] font-semibold uppercase cursor-pointer ${
+                          tradeMode === 'barter'
+                            ? 'bg-[#0052FF] text-white'
+                            : 'text-[#5A6475] hover:text-[#0B0F19]'
+                        }`}
+                      >
+                        Two-Way Barter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTradeMode('direct')}
+                        className={`px-2.5 py-1 rounded-[2px] font-mono-num text-[11px] font-semibold uppercase cursor-pointer ${
+                          tradeMode === 'direct'
+                            ? 'bg-[#0052FF] text-white'
+                            : 'text-[#5A6475] hover:text-[#0B0F19]'
+                        }`}
+                      >
+                        Direct Request
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Requested Quantity */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-[#1D2420] mb-1">
-                        Quantity ({resource.unit})
+                      <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                        You Get: Quantity of {resource.title} ({resource.unit})
                       </label>
                       <input
                         type="number"
@@ -279,69 +364,164 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                         required
                         value={reqQty}
                         onChange={(e) => setReqQty(Number(e.target.value))}
-                        className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] bg-white text-sm font-mono-num"
+                        className="w-full px-3 py-2 rounded-[2px] border border-[#C7DBFF] bg-white text-sm font-mono-num focus:outline-none focus:border-[#0052FF]"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-[#1D2420] mb-1">
-                        How will you reuse it &amp; preferred pickup time? *
+                      <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                        Optional Cash Top-Up Difference (₹)
                       </label>
                       <input
-                        type="text"
-                        required
-                        value={reqNote}
-                        onChange={(e) => setReqNote(e.target.value)}
-                        placeholder="e.g. Need for college prototype; can pick up Friday 4 PM"
-                        className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] bg-white text-sm"
+                        type="number"
+                        step={50}
+                        value={cashTopUp}
+                        onChange={(e) => setCashTopUp(Number(e.target.value))}
+                        placeholder="0 for pure barter"
+                        className="w-full px-3 py-2 rounded-[2px] border border-[#C7DBFF] bg-white text-sm font-mono-num focus:outline-none focus:border-[#0052FF]"
                       />
+                      <p className="text-[10px] text-[#5A6475] mt-0.5">
+                        Positive = you pay difference · Negative = requesting difference · 0 = pure barter
+                      </p>
                     </div>
                   </div>
+
+                  {/* Offered Resource Selector for Two-Way Barter */}
+                  {tradeMode === 'barter' && (
+                    <div className="p-3 rounded-[2px] bg-white border border-[#C7DBFF] space-y-2.5">
+                      <div className="font-mono-num text-[11px] font-bold uppercase text-[#0052FF]">
+                        You Give: Select One of Your Active Listings to Trade
+                      </div>
+                      {!currentUser ? (
+                        <p className="text-xs text-[#5A6475]">
+                          Sign in to select one of your company’s listings to offer in exchange.
+                        </p>
+                      ) : myAvailableResources.length === 0 ? (
+                        <p className="text-xs text-[#5A6475]">
+                          You don’t have any active surplus listings yet. Post a listing first to offer a
+                          two-way swap, or switch to Direct Request.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_140px] gap-2.5">
+                          <div>
+                            <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#5A6475] mb-1">
+                              Your Listing to Offer
+                            </label>
+                            <select
+                              value={offeredResourceId}
+                              onChange={(e) => {
+                                const nextId = e.target.value;
+                                setOfferedResourceId(nextId);
+                                const found = myAvailableResources.find((r) => r.id === nextId);
+                                if (found) setOfferedQty(Math.min(found.quantity, 1));
+                              }}
+                              className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-white text-xs focus:outline-none focus:border-[#0052FF]"
+                            >
+                              <option value="">-- Select your surplus listing --</option>
+                              {myAvailableResources.map((r) => (
+                                <option key={r.id} value={r.id}>
+                                  {r.title} ({r.quantity} {r.unit} available · {r.area})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {selectedOfferedResource && (
+                            <div>
+                              <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#5A6475] mb-1">
+                                Offer Qty ({selectedOfferedResource.unit})
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={selectedOfferedResource.quantity}
+                                required
+                                value={offeredQty}
+                                onChange={(e) => setOfferedQty(Number(e.target.value))}
+                                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-white text-xs font-mono-num focus:outline-none focus:border-[#0052FF]"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Live Side-by-Side Trade Preview */}
+                  {tradeMode === 'barter' && selectedOfferedResource && (
+                    <div className="p-2.5 rounded-[2px] bg-[#060B18] text-[#F8FAFC] border border-[#1D2740] text-xs flex flex-wrap items-center gap-2">
+                      <span className="font-mono-num text-[#C7DBFF]">
+                        YOU GIVE: {offeredQty} {selectedOfferedResource.unit} {selectedOfferedResource.title}
+                        {cashTopUp > 0 ? ` + ₹${cashTopUp.toLocaleString()}` : ''}
+                      </span>
+                      <ArrowLeftRight className="w-3.5 h-3.5 text-[#0052FF]" />
+                      <span className="font-mono-num text-[#A7F3D0]">
+                        YOU GET: {reqQty} {resource.unit} {resource.title}
+                        {cashTopUp < 0 ? ` + ₹${Math.abs(cashTopUp).toLocaleString()}` : ''}
+                      </span>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                      Trade Terms &amp; Preferred Pickup Window *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={reqNote}
+                      onChange={(e) => setReqNote(e.target.value)}
+                      placeholder="e.g. We can swap our surplus cartons this Friday 4 PM at Peenya"
+                      className="w-full px-3 py-2 rounded-[2px] border border-[#C7DBFF] bg-white text-sm focus:outline-none focus:border-[#0052FF]"
+                    />
+                  </div>
+
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="px-4 py-2 rounded-lg bg-[#1B4332] text-white text-xs font-semibold hover:bg-[#143326] disabled:opacity-50 cursor-pointer"
+                    className="px-4 py-2.5 rounded-[2px] bg-[#0052FF] hover:bg-[#0040CC] text-white font-mono-num text-xs font-semibold uppercase tracking-wider disabled:opacity-50 cursor-pointer"
                   >
                     {submitting
-                      ? 'Sending Request...'
+                      ? 'Sending Proposal...'
                       : currentUser
-                        ? 'Send Interest & Coordinate Pickup'
-                        : 'Sign In to Request Exchange'}
+                        ? tradeMode === 'barter' && offeredResourceId
+                          ? 'Send Two-Way Barter Proposal ↗'
+                          : 'Send Trade Request ↗'
+                        : 'Sign In to Propose Trade ↗'}
                   </button>
                 </form>
               )}
 
               {/* Matching Needs */}
               <div>
-                <h3 className="text-sm font-bold text-[#1D2420] mb-2">
+                <h3 className="font-mono-num text-xs font-bold uppercase tracking-wider text-[#0B0F19] mb-2.5">
                   Matching Needs Found by Rule-Based Engine ({matches.length})
                 </h3>
                 {matches.length === 0 ? (
-                  <p className="text-xs text-[#5C6460]">No open needs currently match this resource above threshold.</p>
+                  <p className="text-xs text-[#5A6475]">No open needs currently match this resource above threshold.</p>
                 ) : (
                   <div className="space-y-2.5">
                     {matches.map((m) => (
                       <div
                         key={m.id}
-                        className="p-3.5 rounded-xl border border-[#E4DFD7] bg-[#FAF8F5] flex flex-wrap items-center justify-between gap-3"
+                        className="p-3.5 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] flex flex-wrap items-center justify-between gap-3"
                       >
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono-num text-xs font-bold px-2 py-0.5 rounded-full bg-[#E8F3EC] text-[#1B4332]">
-                              {m.score}% Match
+                            <span className="font-mono-num text-[11px] font-bold px-2 py-0.5 rounded-sm bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                              {m.score}% MATCH
                             </span>
                             <button
                               type="button"
                               onClick={() => onSwitchTarget({ type: 'need', id: m.need.id })}
-                              className="text-sm font-semibold text-[#1D2420] hover:text-[#1B4332] cursor-pointer"
+                              className="text-sm font-bold text-[#0B0F19] hover:text-[#0052FF] cursor-pointer"
                             >
                               {m.need.title}
                             </button>
                           </div>
-                          <div className="text-xs text-[#5C6460]">
+                          <div className="text-xs text-[#5A6475]">
                             {m.need.requesterName} ({m.need.area}, {m.distanceKm} km) · Needs{' '}
                             {m.need.quantity} {m.need.unit}
                           </div>
-                          <div className="text-[11px] text-[#2D6A4F]">
+                          <div className="text-[11px] text-[#047857]">
                             {m.reasons.slice(0, 3).join(' · ')}
                           </div>
                         </div>
@@ -358,81 +538,95 @@ export const DetailModal: React.FC<DetailModalProps> = ({
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-[#9C6B43]">{need.category}</span>
+                    <span className="font-mono-num text-xs font-semibold uppercase text-[#0052FF]">
+                      {need.category}
+                    </span>
                     {need.isSample && (
-                      <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-[#F6EFE8] text-[#9C6B43] border border-[#E6D6C5]">
-                        Sample Data
+                      <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#F5F6F8] text-[#5A6475] border border-[#E2E6EE]">
+                        SAMPLE DATA
                       </span>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={() => setShowReport(!showReport)}
-                    className="text-xs font-semibold text-[#991B1B] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="font-mono-num text-[11px] font-semibold uppercase text-red-700 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Flag className="w-3.5 h-3.5" /> Report Need
                   </button>
                 </div>
 
-                <h2 className="text-xl font-bold text-[#1D2420] mb-2">{need.title}</h2>
-                <p className="text-sm text-[#5C6460] mb-3">{need.description}</p>
+                <h2 className="text-xl font-extrabold text-[#0B0F19] mb-2">{need.title}</h2>
+                <p className="text-sm text-[#5A6475] mb-3">{need.description}</p>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs mb-4">
-                  <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                    <div className="text-[#5C6460] text-[10px]">Needed Quantity</div>
-                    <div className="font-mono-num font-bold text-[#1D2420]">
+                  <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                    <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                      NEEDED QUANTITY
+                    </div>
+                    <div className="font-mono-num font-bold text-[#0B0F19] mt-0.5">
                       {need.quantity} {need.unit}
                     </div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                    <div className="text-[#5C6460] text-[10px]">Location</div>
-                    <div className="font-semibold text-[#1D2420]">{need.area}</div>
+                  <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                    <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                      LOCATION
+                    </div>
+                    <div className="font-semibold text-[#0B0F19] mt-0.5">{need.area}</div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                    <div className="text-[#5C6460] text-[10px]">Deadline</div>
-                    <div className="font-semibold text-[#1D2420]">{need.deadline}</div>
+                  <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                    <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                      DEADLINE
+                    </div>
+                    <div className="font-mono-num font-semibold text-[#0B0F19] mt-0.5">
+                      {need.deadline}
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded-lg bg-[#FAF8F5] border border-[#E4DFD7]">
-                    <div className="text-[#5C6460] text-[10px]">Purpose</div>
-                    <div className="font-semibold text-[#1D2420] truncate">{need.purpose}</div>
+                  <div className="p-2.5 rounded-[2px] bg-[#F5F6F8] border border-[#E2E6EE]">
+                    <div className="font-mono-num text-[#8A94A6] text-[10px] uppercase">
+                      PURPOSE
+                    </div>
+                    <div className="font-semibold text-[#0B0F19] truncate mt-0.5">{need.purpose}</div>
                   </div>
                 </div>
               </div>
 
               {/* Matching Resources */}
               <div>
-                <h3 className="text-sm font-bold text-[#1D2420] mb-2.5">
+                <h3 className="font-mono-num text-xs font-bold uppercase tracking-wider text-[#0B0F19] mb-2.5">
                   Matching Available Resources ({matches.length})
                 </h3>
                 {matches.length === 0 ? (
-                  <p className="text-xs text-[#5C6460]">No matching available resources found right now.</p>
+                  <p className="text-xs text-[#5A6475]">No matching available resources found right now.</p>
                 ) : (
                   <div className="space-y-3">
                     {matches.map((m) => (
                       <div
                         key={m.id}
-                        className="p-4 rounded-xl border border-[#E4DFD7] bg-[#FAF8F5] space-y-2"
+                        className="p-4 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] space-y-2"
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono-num text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#E8F3EC] text-[#1B4332]">
-                              {m.score}% Match
+                            <span className="font-mono-num text-[11px] font-bold px-2.5 py-0.5 rounded-sm bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+                              {m.score}% MATCH
                             </span>
                             <button
                               type="button"
                               onClick={() => onSwitchTarget({ type: 'resource', id: m.resource.id })}
-                              className="text-sm font-bold text-[#1D2420] hover:text-[#1B4332] cursor-pointer"
+                              className="text-sm font-bold text-[#0B0F19] hover:text-[#0052FF] cursor-pointer"
                             >
                               {m.resource.title}
                             </button>
                           </div>
-                          <span className="text-xs text-[#5C6460]">{m.distanceKm} km away</span>
+                          <span className="font-mono-num text-[11px] uppercase text-[#5A6475]">
+                            {m.distanceKm} KM AWAY
+                          </span>
                         </div>
-                        <div className="text-xs text-[#5C6460]">
+                        <div className="text-xs text-[#5A6475]">
                           {m.resource.quantity} {m.resource.unit} · {m.resource.condition} ·{' '}
                           {m.resource.area}
                         </div>
-                        <div className="text-xs text-[#2D6A4F] space-y-0.5">
+                        <div className="text-xs text-[#047857] space-y-0.5">
                           {m.reasons.map((r, idx) => (
                             <div key={idx}>✓ {r}</div>
                           ))}
@@ -441,9 +635,9 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                           <button
                             type="button"
                             onClick={() => onSwitchTarget({ type: 'resource', id: m.resource.id })}
-                            className="px-3 py-1.5 rounded-lg bg-[#1B4332] text-white text-xs font-semibold flex items-center gap-1 hover:bg-[#143326] cursor-pointer"
+                            className="px-3.5 py-2 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-[11px] font-semibold uppercase flex items-center gap-1 cursor-pointer transition-colors"
                           >
-                            View &amp; Request <ArrowRight className="w-3.5 h-3.5" />
+                            View &amp; Propose Trade <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       </div>
@@ -458,16 +652,20 @@ export const DetailModal: React.FC<DetailModalProps> = ({
           {showReport && (
             <form
               onSubmit={handleSubmitReport}
-              className="p-4 rounded-xl bg-red-50/70 border border-red-200 space-y-3"
+              className="p-4 rounded-[2px] bg-red-50/70 border border-red-200 space-y-3"
             >
-              <div className="text-sm font-bold text-red-900">Report Suspicious or Unsafe Listing</div>
+              <div className="font-mono-num text-xs font-bold uppercase text-red-900">
+                Report Suspicious or Unsafe Listing
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-red-900 mb-1">Reason</label>
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-red-900 mb-1">
+                    Reason
+                  </label>
                   <select
                     value={reportReason}
                     onChange={(e) => setReportReason(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-red-200 bg-white text-xs"
+                    className="w-full px-3 py-2 rounded-[2px] border border-red-200 bg-white text-xs"
                   >
                     <option>Unsafe or Hazardous Material</option>
                     <option>Medicines / Pharmaceuticals</option>
@@ -476,28 +674,30 @@ export const DetailModal: React.FC<DetailModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-red-900 mb-1">Details</label>
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-red-900 mb-1">
+                    Details
+                  </label>
                   <input
                     type="text"
                     required
                     value={reportDetails}
                     onChange={(e) => setReportDetails(e.target.value)}
                     placeholder="Briefly explain what needs moderator review"
-                    className="w-full px-3 py-2 rounded-lg border border-red-200 bg-white text-xs"
+                    className="w-full px-3 py-2 rounded-[2px] border border-red-200 bg-white text-xs"
                   />
                 </div>
               </div>
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="px-3.5 py-1.5 rounded-lg bg-red-800 text-white text-xs font-semibold cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-[2px] bg-red-800 text-white font-mono-num text-[11px] font-semibold uppercase cursor-pointer"
                 >
                   Submit Report
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowReport(false)}
-                  className="px-3.5 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-900 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-[2px] border border-red-200 font-mono-num text-[11px] font-semibold uppercase text-red-900 cursor-pointer"
                 >
                   Cancel
                 </button>

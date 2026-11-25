@@ -32,12 +32,13 @@ import type {
 
 seedIfEmpty();
 
-const app = express();
+const IS_VERCEL = process.env.VERCEL === '1';
+export const app = express();
 const PORT = Number(process.env.PORT ?? 3001);
 const REPO_ROOT = fs.existsSync(path.resolve(process.cwd(), 'uploads'))
   ? process.cwd()
   : path.resolve(process.cwd(), '..');
-const UPLOADS_DIR = path.join(REPO_ROOT, 'uploads');
+const UPLOADS_DIR = IS_VERCEL ? path.join('/tmp', 'reworth-uploads') : path.join(REPO_ROOT, 'uploads');
 const CLIENT_DIST_DIR = path.join(REPO_ROOT, 'client', 'dist');
 if (!fs.existsSync(UPLOADS_DIR)) {
   fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -191,10 +192,15 @@ function createSessionForUser(userId: string): string {
 // --- Routes ---
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, service: 'reworth-api', timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: 'reworth-api',
+    storageMode: IS_VERCEL ? 'serverless-tmp-sqlite' : 'local-sqlite',
+    timestamp: new Date().toISOString(),
+  });
 });
 
-// Upload image (base64 data URL -> /uploads/<id>.<ext>)
+// Upload image (base64 data URL -> /uploads/<id>.<ext>, or inline data URL on Vercel)
 app.post('/api/upload', requireAuth, (req, res) => {
   const { dataUrl } = req.body as { dataUrl?: string };
   if (!dataUrl || typeof dataUrl !== 'string') {
@@ -210,6 +216,10 @@ app.post('/api/upload', requireAuth, (req, res) => {
   const buffer = Buffer.from(match[2], 'base64');
   if (buffer.length > 3 * 1024 * 1024) {
     res.status(400).json({ error: 'Image must be 3 MB or smaller.' });
+    return;
+  }
+  if (IS_VERCEL) {
+    res.json({ imageUrl: dataUrl });
     return;
   }
   const filename = `upload-${crypto.randomUUID()}.${ext}`;
@@ -370,13 +380,16 @@ app.post('/api/auth/logout', (req, res) => {
 
 // Resources
 app.get('/api/resources', (req, res) => {
-  const { category, transferType, search, status } = req.query as Record<string, string | undefined>;
+  const { category, transferType, search, status, ownerId } = req.query as Record<string, string | undefined>;
   let items = getAllResources(false);
 
   if (status && status !== 'all') {
     items = items.filter((r) => r.status === status);
   } else if (!status) {
     items = items.filter((r) => r.status === 'available' || r.status === 'reserved');
+  }
+  if (ownerId) {
+    items = items.filter((r) => r.ownerId === ownerId);
   }
   if (category && category !== 'all') {
     items = items.filter((r) => r.category === category);
@@ -645,16 +658,20 @@ app.get('/api/matches', (req, res) => {
   });
 });
 
-// Exchanges
+// Exchanges (Two-Way B2B Barter, Counter-Offer & Dual Handover Confirmation)
 function getExchangesForUser(user: User): Exchange[] {
   const isAdmin = user.role === 'admin';
   const rows = db
     .prepare(
       `SELECT e.*, r.title AS resource_title, r.category AS resource_category, r.image_url AS resource_image_url,
               r.area AS resource_area, r.pickup_instructions AS pickup_instructions,
+              r_off.title AS offered_resource_title, r_off.category AS offered_resource_category,
+              r_off.image_url AS offered_resource_image_url, r_off.area AS offered_resource_area,
+              r_off.unit AS offered_resource_unit,
               uo.name AS owner_name, ur.name AS requester_name
        FROM exchanges e
        JOIN resources r ON r.id = e.resource_id
+       LEFT JOIN resources r_off ON r_off.id = e.offered_resource_id
        JOIN users uo ON uo.id = e.owner_id
        JOIN users ur ON ur.id = e.requester_id
        ${isAdmin ? '' : 'WHERE e.owner_id = ? OR e.requester_id = ?'}
@@ -677,6 +694,7 @@ function getExchangesForUser(user: User): Exchange[] {
         createdAt: String(m.created_at),
       })
     );
+    const status = row.status as ExchangeStatus;
     return {
       id: String(row.id),
       resourceId: String(row.resource_id),
@@ -692,7 +710,19 @@ function getExchangesForUser(user: User): Exchange[] {
       requesterName: String(row.requester_name),
       requestedQuantity: Number(row.requested_quantity),
       unit: String(row.unit),
-      status: row.status as ExchangeStatus,
+      offeredResourceId: row.offered_resource_id ? String(row.offered_resource_id) : null,
+      offeredResourceTitle: row.offered_resource_title ? String(row.offered_resource_title) : undefined,
+      offeredResourceCategory: row.offered_resource_category ? (row.offered_resource_category as ResourceCategory) : undefined,
+      offeredResourceImageUrl: row.offered_resource_image_url ? String(row.offered_resource_image_url) : undefined,
+      offeredResourceArea: row.offered_resource_area ? String(row.offered_resource_area) : undefined,
+      offeredQuantity: row.offered_quantity !== null && row.offered_quantity !== undefined ? Number(row.offered_quantity) : null,
+      offeredUnit: row.offered_resource_unit ? String(row.offered_resource_unit) : undefined,
+      cashTopUpAmount: row.cash_top_up_amount !== null && row.cash_top_up_amount !== undefined ? Number(row.cash_top_up_amount) : 0,
+      lastCounterBy: row.last_counter_by ? String(row.last_counter_by) : null,
+      ownerConfirmed: Boolean(row.owner_confirmed),
+      requesterConfirmed: Boolean(row.requester_confirmed),
+      handoverOtp: (status === 'accepted' || status === 'completed') && row.handover_otp ? String(row.handover_otp) : null,
+      status,
       initialNote: String(row.initial_note),
       ownerNote: row.owner_note ? String(row.owner_note) : undefined,
       estimatedKg: Number(row.estimated_kg),
@@ -711,10 +741,21 @@ app.get('/api/exchanges', requireAuth, (req, res) => {
 
 app.post('/api/exchanges', requireAuth, (req, res) => {
   const user = (req as express.Request & { user: User }).user;
-  const { resourceId, needId, requestedQuantity, initialNote } = req.body as {
+  const {
+    resourceId,
+    needId,
+    requestedQuantity,
+    offeredResourceId,
+    offeredQuantity,
+    cashTopUpAmount,
+    initialNote,
+  } = req.body as {
     resourceId?: string;
     needId?: string | null;
     requestedQuantity?: number;
+    offeredResourceId?: string | null;
+    offeredQuantity?: number | null;
+    cashTopUpAmount?: number | null;
     initialNote?: string;
   };
 
@@ -739,19 +780,68 @@ app.post('/api/exchanges', requireAuth, (req, res) => {
     return;
   }
 
-  const id = `ex-${crypto.randomUUID()}`;
-  const now = new Date().toISOString();
-  const estKg = estimateDivertedKg(
+  let validOfferedId: string | null = null;
+  let validOfferedQty: number | null = null;
+  let offeredSummary = '';
+  let estKg = estimateDivertedKg(
     resRow.category as ResourceCategory,
     requestedQuantity,
     String(resRow.unit)
   );
 
+  if (offeredResourceId) {
+    const offRow = db.prepare('SELECT * FROM resources WHERE id = ?').get(offeredResourceId) as Record<string, unknown> | undefined;
+    if (!offRow || offRow.status !== 'available') {
+      res.status(400).json({ error: 'The resource you offered in exchange is not available.' });
+      return;
+    }
+    if (String(offRow.owner_id) !== user.id) {
+      res.status(403).json({ error: 'You can only offer your own active listings in a trade.' });
+      return;
+    }
+    if (String(offRow.id) === resourceId) {
+      res.status(400).json({ error: 'Offered resource cannot be the same as the requested resource.' });
+      return;
+    }
+    const qty = Number(offeredQuantity ?? 0);
+    if (!qty || qty <= 0 || qty > Number(offRow.quantity)) {
+      res.status(400).json({
+        error: `Offered quantity must be between 1 and ${offRow.quantity} ${offRow.unit}.`,
+      });
+      return;
+    }
+    validOfferedId = String(offRow.id);
+    validOfferedQty = qty;
+    offeredSummary = ` Offering in barter: ${qty} ${offRow.unit} of ${offRow.title}.`;
+    estKg = Number(
+      (
+        estKg +
+        estimateDivertedKg(offRow.category as ResourceCategory, qty, String(offRow.unit))
+      ).toFixed(2)
+    );
+  }
+
+  const parsedTopUp =
+    cashTopUpAmount !== undefined && cashTopUpAmount !== null && Number.isFinite(Number(cashTopUpAmount))
+      ? Number(cashTopUpAmount)
+      : 0;
+  const topUpSummary =
+    parsedTopUp > 0
+      ? ` Plus ₹${parsedTopUp.toLocaleString()} cash top-up from requester.`
+      : parsedTopUp < 0
+        ? ` Requesting ₹${Math.abs(parsedTopUp).toLocaleString()} cash top-up difference.`
+        : '';
+
+  const id = `ex-${crypto.randomUUID()}`;
+  const now = new Date().toISOString();
+
   db.prepare(
     `INSERT INTO exchanges (
       id, resource_id, need_id, owner_id, requester_id, requested_quantity, unit,
+      offered_resource_id, offered_quantity, cash_top_up_amount, last_counter_by,
+      owner_confirmed, requester_confirmed, handover_otp,
       status, initial_note, estimated_kg, is_sample, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, 0, ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, NULL, 'pending', ?, ?, 0, ?, ?)`
   ).run(
     id,
     resourceId,
@@ -760,24 +850,289 @@ app.post('/api/exchanges', requireAuth, (req, res) => {
     user.id,
     requestedQuantity,
     String(resRow.unit),
+    validOfferedId,
+    validOfferedQty,
+    parsedTopUp,
+    user.id,
     initialNote.trim(),
     estKg,
     now,
     now
   );
 
+  const msgBody = `${initialNote.trim()}${offeredSummary}${topUpSummary}`;
   db.prepare(
     `INSERT INTO exchange_messages (id, exchange_id, sender_id, body, created_at) VALUES (?, ?, ?, ?, ?)`
-  ).run(`msg-${crypto.randomUUID()}`, id, user.id, initialNote.trim(), now);
+  ).run(`msg-${crypto.randomUUID()}`, id, user.id, msgBody, now);
 
   const created = getExchangesForUser(user).find((e) => e.id === id);
   res.status(201).json({ exchange: created });
 });
 
+app.patch('/api/exchanges/:id/counter', requireAuth, (req, res) => {
+  const user = (req as express.Request & { user: User }).user;
+  const exchangeId = String(req.params.id);
+  const {
+    requestedQuantity,
+    offeredResourceId,
+    offeredQuantity,
+    cashTopUpAmount,
+    note,
+  } = req.body as {
+    requestedQuantity?: number;
+    offeredResourceId?: string | null;
+    offeredQuantity?: number | null;
+    cashTopUpAmount?: number | null;
+    note?: string;
+  };
+
+  const row = db.prepare('SELECT * FROM exchanges WHERE id = ?').get(exchangeId) as Record<string, unknown> | undefined;
+  if (!row) {
+    res.status(404).json({ error: 'Exchange not found.' });
+    return;
+  }
+
+  const isOwner = String(row.owner_id) === user.id;
+  const isRequester = String(row.requester_id) === user.id;
+  if (!isOwner && !isRequester && user.role !== 'admin') {
+    res.status(403).json({ error: 'Only trade participants can submit a counter-offer.' });
+    return;
+  }
+
+  const currentStatus = String(row.status) as ExchangeStatus;
+  if (currentStatus !== 'pending' && currentStatus !== 'countered') {
+    res.status(400).json({ error: 'Counter-offers are only allowed on pending or countered trades.' });
+    return;
+  }
+
+  const resRow = db.prepare('SELECT * FROM resources WHERE id = ?').get(String(row.resource_id)) as Record<string, unknown> | undefined;
+  if (!resRow || resRow.status !== 'available') {
+    res.status(400).json({ error: 'Target resource is no longer available.' });
+    return;
+  }
+
+  const nextReqQty = requestedQuantity !== undefined ? Number(requestedQuantity) : Number(row.requested_quantity);
+  if (!nextReqQty || nextReqQty <= 0 || nextReqQty > Number(resRow.quantity)) {
+    res.status(400).json({
+      error: `Requested quantity must be between 1 and ${resRow.quantity} ${resRow.unit}.`,
+    });
+    return;
+  }
+
+  const nextOfferedId =
+    offeredResourceId !== undefined
+      ? offeredResourceId || null
+      : row.offered_resource_id
+        ? String(row.offered_resource_id)
+        : null;
+
+  let nextOfferedQty: number | null = null;
+  let estKg = estimateDivertedKg(
+    resRow.category as ResourceCategory,
+    nextReqQty,
+    String(resRow.unit)
+  );
+  let offerDesc = 'no item offered';
+
+  if (nextOfferedId) {
+    const offRow = db.prepare('SELECT * FROM resources WHERE id = ?').get(nextOfferedId) as Record<string, unknown> | undefined;
+    if (!offRow || offRow.status !== 'available') {
+      res.status(400).json({ error: 'The counter-offered listing is not available.' });
+      return;
+    }
+    if (String(offRow.owner_id) !== String(row.requester_id)) {
+      res.status(400).json({ error: 'The offered listing in a counter-offer must belong to the requesting company.' });
+      return;
+    }
+    const candidateQty =
+      offeredQuantity !== undefined && offeredQuantity !== null
+        ? Number(offeredQuantity)
+        : row.offered_quantity !== null && row.offered_quantity !== undefined
+          ? Number(row.offered_quantity)
+          : 1;
+    if (!candidateQty || candidateQty <= 0 || candidateQty > Number(offRow.quantity)) {
+      res.status(400).json({
+        error: `Offered quantity must be between 1 and ${offRow.quantity} ${offRow.unit}.`,
+      });
+      return;
+    }
+    nextOfferedQty = candidateQty;
+    offerDesc = `${candidateQty} ${offRow.unit} of ${offRow.title}`;
+    estKg = Number(
+      (
+        estKg +
+        estimateDivertedKg(offRow.category as ResourceCategory, candidateQty, String(offRow.unit))
+      ).toFixed(2)
+    );
+  }
+
+  const nextTopUp =
+    cashTopUpAmount !== undefined && cashTopUpAmount !== null && Number.isFinite(Number(cashTopUpAmount))
+      ? Number(cashTopUpAmount)
+      : Number(row.cash_top_up_amount ?? 0);
+
+  const now = new Date().toISOString();
+  db.prepare(
+    `UPDATE exchanges
+     SET requested_quantity = ?, offered_resource_id = ?, offered_quantity = ?,
+         cash_top_up_amount = ?, estimated_kg = ?, status = 'countered',
+         last_counter_by = ?, updated_at = ?
+     WHERE id = ?`
+  ).run(nextReqQty, nextOfferedId, nextOfferedQty, nextTopUp, estKg, user.id, now, exchangeId);
+
+  const topUpText =
+    nextTopUp > 0
+      ? ` + ₹${nextTopUp.toLocaleString()} cash top-up`
+      : nextTopUp < 0
+        ? ` (₹${Math.abs(nextTopUp).toLocaleString()} cash difference from owner)`
+        : '';
+  const counterSummary = `[Counter-Offer] ${nextReqQty} ${resRow.unit} of ${resRow.title} ↔ ${offerDesc}${topUpText}.${note?.trim() ? ` Note: ${note.trim()}` : ''}`;
+
+  db.prepare(
+    'INSERT INTO exchange_messages (id, exchange_id, sender_id, body, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(`msg-${crypto.randomUUID()}`, exchangeId, user.id, counterSummary, now);
+
+  const updated = getExchangesForUser(user).find((e) => e.id === exchangeId);
+  res.json({ exchange: updated });
+});
+
+function handleDualHandoverConfirmation(
+  exchangeId: string,
+  row: Record<string, unknown>,
+  user: User,
+  otp?: string
+): { ok: true; exchange: Exchange | undefined; awaitingCounterparty: boolean } | { ok: false; status: number; error: string } {
+  const currentStatus = String(row.status) as ExchangeStatus;
+  if (currentStatus !== 'accepted') {
+    return { ok: false, status: 400, error: 'An exchange must be accepted before confirming handover.' };
+  }
+
+  const expectedOtp = row.handover_otp ? String(row.handover_otp) : null;
+  if (expectedOtp && String(otp ?? '').trim() !== expectedOtp) {
+    return { ok: false, status: 400, error: 'Invalid 6-digit handover OTP. Both parties must verify the shared OTP.' };
+  }
+
+  const isOwner = String(row.owner_id) === user.id;
+  const isRequester = String(row.requester_id) === user.id;
+  const nextOwnerConfirmed = Boolean(row.owner_confirmed) || isOwner;
+  const nextRequesterConfirmed = Boolean(row.requester_confirmed) || isRequester;
+  const now = new Date().toISOString();
+
+  if (nextOwnerConfirmed && nextRequesterConfirmed) {
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      const targetRes = db.prepare('SELECT * FROM resources WHERE id = ?').get(String(row.resource_id)) as Record<string, unknown> | undefined;
+      if (!targetRes) {
+        throw new Error('Target resource not found during handover completion.');
+      }
+      const remainingTarget = Math.max(0, Number(targetRes.quantity) - Number(row.requested_quantity));
+      db.prepare('UPDATE resources SET quantity = ?, status = ? WHERE id = ?').run(
+        remainingTarget,
+        remainingTarget === 0 ? 'completed' : 'available',
+        String(row.resource_id)
+      );
+
+      if (row.offered_resource_id && row.offered_quantity) {
+        const offeredRes = db.prepare('SELECT * FROM resources WHERE id = ?').get(String(row.offered_resource_id)) as Record<string, unknown> | undefined;
+        if (offeredRes) {
+          const remainingOffered = Math.max(0, Number(offeredRes.quantity) - Number(row.offered_quantity));
+          db.prepare('UPDATE resources SET quantity = ?, status = ? WHERE id = ?').run(
+            remainingOffered,
+            remainingOffered === 0 ? 'completed' : 'available',
+            String(row.offered_resource_id)
+          );
+        }
+      }
+
+      if (row.need_id) {
+        db.prepare("UPDATE needs SET status = 'fulfilled' WHERE id = ?").run(String(row.need_id));
+      }
+
+      db.prepare(
+        `UPDATE exchanges SET owner_confirmed = 1, requester_confirmed = 1, status = 'completed', updated_at = ? WHERE id = ?`
+      ).run(now, exchangeId);
+
+      db.prepare(
+        'INSERT INTO exchange_messages (id, exchange_id, sender_id, body, created_at) VALUES (?, ?, ?, ?, ?)'
+      ).run(
+        `msg-${crypto.randomUUID()}`,
+        exchangeId,
+        user.id,
+        '[Handover Completed] Both companies verified the 6-digit OTP. Inventories have been updated atomically.',
+        now
+      );
+
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      return {
+        ok: false,
+        status: 500,
+        error: err instanceof Error ? err.message : 'Transaction failed while completing handover.',
+      };
+    }
+
+    return {
+      ok: true,
+      exchange: getExchangesForUser(user).find((e) => e.id === exchangeId),
+      awaitingCounterparty: false,
+    };
+  }
+
+  db.prepare(
+    'UPDATE exchanges SET owner_confirmed = ?, requester_confirmed = ?, updated_at = ? WHERE id = ?'
+  ).run(nextOwnerConfirmed ? 1 : 0, nextRequesterConfirmed ? 1 : 0, now, exchangeId);
+
+  db.prepare(
+    'INSERT INTO exchange_messages (id, exchange_id, sender_id, body, created_at) VALUES (?, ?, ?, ?, ?)'
+  ).run(
+    `msg-${crypto.randomUUID()}`,
+    exchangeId,
+    user.id,
+    '[Handover Confirmed] Verified handover OTP. Waiting for the other company to confirm.',
+    now
+  );
+
+  return {
+    ok: true,
+    exchange: getExchangesForUser(user).find((e) => e.id === exchangeId),
+    awaitingCounterparty: true,
+  };
+}
+
+app.post('/api/exchanges/:id/confirm-handover', requireAuth, (req, res) => {
+  const user = (req as express.Request & { user: User }).user;
+  const exchangeId = String(req.params.id);
+  const { otp } = req.body as { otp?: string };
+  const row = db.prepare('SELECT * FROM exchanges WHERE id = ?').get(exchangeId) as Record<string, unknown> | undefined;
+
+  if (!row) {
+    res.status(404).json({ error: 'Exchange not found.' });
+    return;
+  }
+  const isOwner = String(row.owner_id) === user.id;
+  const isRequester = String(row.requester_id) === user.id;
+  if (!isOwner && !isRequester && user.role !== 'admin') {
+    res.status(403).json({ error: 'Not authorized to confirm this exchange.' });
+    return;
+  }
+
+  const result = handleDualHandoverConfirmation(exchangeId, row, user, otp);
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+  res.json({ exchange: result.exchange, awaitingCounterparty: result.awaitingCounterparty });
+});
+
 app.patch('/api/exchanges/:id/status', requireAuth, (req, res) => {
   const user = (req as express.Request & { user: User }).user;
   const exchangeId = String(req.params.id);
-  const { status, ownerNote } = req.body as { status?: ExchangeStatus; ownerNote?: string };
+  const { status, ownerNote, otp } = req.body as {
+    status?: ExchangeStatus;
+    ownerNote?: string;
+    otp?: string;
+  };
   const row = db.prepare('SELECT * FROM exchanges WHERE id = ?').get(exchangeId) as Record<string, unknown> | undefined;
 
   if (!row) {
@@ -798,36 +1153,69 @@ app.patch('/api/exchanges/:id/status', requireAuth, (req, res) => {
     return;
   }
 
-  if ((status === 'accepted' || status === 'rejected') && !isOwner) {
-    res.status(403).json({ error: 'Only the resource owner can accept or reject an exchange.' });
+  if (status === 'completed') {
+    const result = handleDualHandoverConfirmation(exchangeId, row, user, otp);
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.json({ exchange: result.exchange, awaitingCounterparty: result.awaitingCounterparty });
     return;
   }
-  if (status === 'completed' && currentStatus !== 'accepted') {
-    res.status(400).json({ error: 'An exchange must be accepted before marking it completed.' });
+
+  if (status === 'accepted') {
+    if (currentStatus === 'pending' && !isOwner) {
+      res.status(403).json({ error: 'Only the resource owner can accept an incoming trade proposal.' });
+      return;
+    }
+    if (currentStatus === 'countered' && String(row.last_counter_by) === user.id) {
+      res.status(403).json({ error: 'Waiting for the other company to review your counter-offer.' });
+      return;
+    }
+    if (currentStatus !== 'pending' && currentStatus !== 'countered') {
+      res.status(400).json({ error: 'Only pending or countered trades can be accepted.' });
+      return;
+    }
+
+    const handoverOtp = String(crypto.randomInt(100000, 999999));
+    const now = new Date().toISOString();
+    db.prepare(
+      `UPDATE exchanges
+       SET status = 'accepted', owner_note = COALESCE(?, owner_note),
+           owner_confirmed = 0, requester_confirmed = 0, handover_otp = ?, updated_at = ?
+       WHERE id = ?`
+    ).run(ownerNote?.trim() || null, handoverOtp, now, exchangeId);
+
+    db.prepare(
+      'INSERT INTO exchange_messages (id, exchange_id, sender_id, body, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(
+      `msg-${crypto.randomUUID()}`,
+      exchangeId,
+      user.id,
+      `[Trade Accepted] Handover OTP generated (${handoverOtp}). Both companies must enter this OTP at pickup to complete the swap.`,
+      now
+    );
+
+    const updated = getExchangesForUser(user).find((e) => e.id === exchangeId);
+    res.json({ exchange: updated });
     return;
+  }
+
+  if (status === 'rejected') {
+    if (currentStatus === 'pending' && !isOwner) {
+      res.status(403).json({ error: 'Only the resource owner can reject an incoming proposal.' });
+      return;
+    }
+    if (currentStatus === 'countered' && String(row.last_counter_by) === user.id) {
+      res.status(403).json({ error: 'Cancel the trade instead of rejecting your own counter-offer.' });
+      return;
+    }
   }
 
   const now = new Date().toISOString();
   db.prepare(
     'UPDATE exchanges SET status = ?, owner_note = COALESCE(?, owner_note), updated_at = ? WHERE id = ?'
   ).run(status, ownerNote?.trim() || null, now, exchangeId);
-
-  // When completed, update resource remaining quantity and optionally linked need
-  if (status === 'completed') {
-    const resRow = db.prepare('SELECT * FROM resources WHERE id = ?').get(String(row.resource_id)) as Record<string, unknown> | undefined;
-    if (resRow) {
-      const remaining = Math.max(0, Number(resRow.quantity) - Number(row.requested_quantity));
-      const nextResStatus = remaining === 0 ? 'completed' : 'available';
-      db.prepare('UPDATE resources SET quantity = ?, status = ? WHERE id = ?').run(
-        remaining,
-        nextResStatus,
-        String(row.resource_id)
-      );
-    }
-    if (row.need_id) {
-      db.prepare("UPDATE needs SET status = 'fulfilled' WHERE id = ?").run(String(row.need_id));
-    }
-  }
 
   const updated = getExchangesForUser(user).find((e) => e.id === exchangeId);
   res.json({ exchange: updated });
@@ -1051,7 +1439,7 @@ app.post('/api/moderation/remove-listing', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-if (fs.existsSync(CLIENT_DIST_DIR)) {
+if (!IS_VERCEL && fs.existsSync(CLIENT_DIST_DIR)) {
   app.use(express.static(CLIENT_DIST_DIR));
   app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
@@ -1062,6 +1450,10 @@ if (fs.existsSync(CLIENT_DIST_DIR)) {
   });
 }
 
-app.listen(PORT, () => {
-  console.log(`ReWorth API listening on http://localhost:${PORT}`);
-});
+if (!IS_VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`ReWorth API listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;

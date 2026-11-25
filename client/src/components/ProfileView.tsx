@@ -23,15 +23,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
 
   if (!user) {
     return (
-      <div className="max-w-lg mx-auto bg-white rounded-2xl border border-[#E4DFD7] p-8 text-center">
-        <UserIcon className="w-8 h-8 text-[#1B4332] mx-auto mb-2" />
-        <h2 className="text-lg font-bold mb-2">No Active Account</h2>
+      <div className="max-w-lg mx-auto bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] p-8 text-center">
+        <UserIcon className="w-8 h-8 text-[#0052FF] mx-auto mb-2" />
+        <h2 className="text-lg font-extrabold uppercase text-[#0B0F19] mb-3">NO ACTIVE ACCOUNT</h2>
         <button
           type="button"
           onClick={onOpenAuth}
-          className="px-4 py-2 rounded-xl bg-[#1B4332] text-white text-sm font-semibold cursor-pointer"
+          className="px-5 py-2.5 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-xs font-semibold uppercase cursor-pointer"
         >
-          Sign In / Create Profile
+          Sign In / Create Profile ↗
         </button>
       </div>
     );
@@ -67,28 +67,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
   };
 
   return (
-    <div className="max-w-2xl mx-auto bg-white rounded-2xl border border-[#E4DFD7] p-6 space-y-5">
-      <div className="flex items-center justify-between">
+    <div className="max-w-2xl mx-auto bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] p-6 sm:p-8 space-y-5">
+      <div className="flex items-center justify-between pb-4 border-b border-[#E2E6EE]">
         <div>
-          <h1 className="text-xl font-bold text-[#1B4332]">Your Profile &amp; Matching Area</h1>
-          <p className="text-xs text-[#5C6460]">
-            Your neighborhood determines distance calculations for nearby opportunities.
+          <div className="font-mono-num text-[11px] font-semibold uppercase tracking-widest text-[#0052FF] mb-0.5">
+            ACCOUNT CONFIGURATION
+          </div>
+          <h1 className="text-xl font-extrabold uppercase tracking-tight text-[#0B0F19]">
+            PROFILE &amp; MATCHING AREA
+          </h1>
+          <p className="text-xs text-[#5A6475] mt-0.5">
+            Your neighborhood determines Haversine distance calculations for nearby opportunities.
           </p>
         </div>
         {user.isDemo && (
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#F6EFE8] text-[#9C6B43] border border-[#E6D6C5]">
-            Demo Profile
+          <span className="font-mono-num text-[10px] font-semibold uppercase px-2.5 py-1 rounded-sm bg-[#EEF4FF] text-[#0052FF] border border-[#C7DBFF]">
+            DEMO PROFILE
           </span>
         )}
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+        <div className="p-3 rounded-[2px] bg-red-50 border border-red-200 text-sm text-red-800">
           {error}
         </div>
       )}
       {saved && (
-        <div className="p-3 rounded-lg bg-[#E8F3EC] border border-[#B7DFC5] text-sm text-[#1B4332] flex items-center gap-2">
+        <div className="p-3 rounded-[2px] bg-[#ECFDF5] border border-[#A7F3D0] text-sm text-[#047857] flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" /> Profile updated!
         </div>
       )}
@@ -96,21 +101,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
       <form onSubmit={handleSave} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold mb-1">Display Name</label>
+            <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+              Display Name
+            </label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+              className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Account Type</label>
+            <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+              Account Type
+            </label>
             <select
               value={accountType}
               onChange={(e) => setAccountType(e.target.value as AccountType)}
-              className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+              className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
             >
               {ACCOUNT_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -120,20 +129,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Organization / College</label>
+            <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+              Organization / College
+            </label>
             <input
               type="text"
               value={organization}
               onChange={(e) => setOrganization(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+              className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Area / Neighborhood</label>
+            <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+              Area / Neighborhood
+            </label>
             <select
               value={area}
               onChange={(e) => setArea(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+              className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
             >
               {AREA_HUBS.map((hub) => (
                 <option key={hub.name} value={hub.name}>
@@ -145,7 +158,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1.5">Material Interests</label>
+          <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1.5">
+            Material Interests
+          </label>
           <div className="flex flex-wrap gap-1.5">
             {CATEGORY_NAMES.map((cat) => {
               const selected = interests.includes(cat);
@@ -154,10 +169,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
                   key={cat}
                   type="button"
                   onClick={() => toggleInterest(cat)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium border cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-[2px] font-mono-num text-[10px] font-semibold uppercase border cursor-pointer ${
                     selected
-                      ? 'bg-[#1B4332] text-white border-[#1B4332]'
-                      : 'bg-[#FAF8F5] text-[#5C6460] border-[#E4DFD7]'
+                      ? 'bg-[#0052FF] text-white border-[#0052FF]'
+                      : 'bg-[#F5F6F8] text-[#5A6475] border-[#E2E6EE] hover:border-[#0B0F19]'
                   }`}
                 >
                   {cat}
@@ -168,19 +183,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ user, onUpdated, onOpe
         </div>
 
         <div>
-          <label className="block text-xs font-semibold mb-1">Bio</label>
+          <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+            Bio
+          </label>
           <textarea
             rows={2}
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+            className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
           />
         </div>
 
         <button
           type="submit"
           disabled={saving}
-          className="px-5 py-2.5 rounded-xl bg-[#1B4332] text-white text-sm font-semibold hover:bg-[#143326] cursor-pointer"
+          className="px-5 py-2.5 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-xs font-semibold uppercase tracking-wider cursor-pointer transition-colors"
         >
           {saving ? 'Saving...' : 'Save Profile'}
         </button>

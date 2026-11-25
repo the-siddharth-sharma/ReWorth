@@ -1,16 +1,18 @@
 import React from 'react';
-import { MapPin, Clock, Package } from 'lucide-react';
+import { ArrowUpRight, MapPin, Package } from 'lucide-react';
 import { haversineDistanceKm } from '../../../shared/matching.ts';
 import type { Resource, User } from '../../../shared/types.ts';
 
 interface ResourceCardProps {
   resource: Resource;
+  index?: number;
   currentUser: User | null;
   onSelect: (resourceId: string) => void;
 }
 
 export const ResourceCard: React.FC<ResourceCardProps> = ({
   resource,
+  index,
   currentUser,
   onSelect,
 }) => {
@@ -18,23 +20,42 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
     ? haversineDistanceKm(currentUser.lat, currentUser.lng, resource.lat, resource.lng)
     : null;
 
-  const transferBadge =
-    resource.transferType === 'free'
-      ? { label: 'Free Pickup', cls: 'bg-[#E8F3EC] text-[#1B4332] border-[#B7DFC5]' }
-      : resource.transferType === 'exchange'
-        ? { label: 'Exchange / Barter', cls: 'bg-[#F6EFE8] text-[#9C6B43] border-[#E6D6C5]' }
+  const statusBadge =
+    resource.transferType === 'exchange'
+      ? {
+          label: 'BARTER / SWAP',
+          cls: 'bg-[#EEF4FF] text-[#0052FF] border-[#C7DBFF]',
+        }
+      : resource.transferType === 'free'
+        ? {
+            label: 'AVAILABLE · FREE',
+            cls: 'bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]',
+          }
         : {
-            label: `₹${resource.priceAmount ?? 0} Low-Cost`,
-            cls: 'bg-[#F3EFEA] text-[#1D2420] border-[#D8D1C7]',
+            label: `₹${resource.priceAmount ?? 0} RECOVERY`,
+            cls: 'bg-[#F5F6F8] text-[#0B0F19] border-[#E2E6EE]',
           };
 
   return (
     <div
       onClick={() => onSelect(resource.id)}
-      className="group bg-white rounded-2xl border border-[#E4DFD7] overflow-hidden hover:border-[#1B4332] transition-all cursor-pointer flex flex-col"
+      className="group bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] overflow-hidden hover:border-[#0052FF] transition-colors cursor-pointer flex flex-col"
     >
+      {/* Top Meta Row */}
+      <div className="px-4 py-2.5 border-b border-[#E2E6EE] flex items-center justify-between gap-2 bg-[#FFFFFF]">
+        <span className="font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#8A94A6] truncate">
+          {index !== undefined ? `${String(index).padStart(2, '0')} // ` : ''}
+          {resource.category}
+        </span>
+        <span
+          className={`font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm border shrink-0 ${statusBadge.cls}`}
+        >
+          {statusBadge.label}
+        </span>
+      </div>
+
       {/* Image */}
-      <div className="relative h-40 bg-[#F3EFEA] border-b border-[#E4DFD7] overflow-hidden">
+      <div className="relative h-36 bg-[#F5F6F8] border-b border-[#E2E6EE] overflow-hidden">
         {resource.imageUrl ? (
           <img
             src={resource.imageUrl}
@@ -42,62 +63,63 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({
             className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-[#8A918D]">
-            <Package className="w-8 h-8 mb-1" />
-            <span className="text-xs">No image provided</span>
+          <div className="w-full h-full flex flex-col items-center justify-center text-[#8A94A6]">
+            <Package className="w-7 h-7 mb-1" />
+            <span className="font-mono-num text-[10px] uppercase">NO IMAGE PROVIDED</span>
           </div>
         )}
-        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1.5">
-          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${transferBadge.cls}`}>
-            {transferBadge.label}
-          </span>
+        <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
           {resource.urgency === 'urgent' && (
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
-              Urgent Disposal
+            <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#FFFBEB] text-[#D97706] border border-[#FDE68A]">
+              URGENT DISPOSAL
+            </span>
+          )}
+          {resource.isSample && (
+            <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#FFFFFF] text-[#5A6475] border border-[#E2E6EE]">
+              SAMPLE DATA
             </span>
           )}
         </div>
-        {resource.isSample && (
-          <span className="absolute top-2.5 right-2.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-white/90 text-[#9C6B43] border border-[#E6D6C5]">
-            Sample Data
-          </span>
-        )}
       </div>
 
       {/* Content */}
       <div className="p-4 flex-1 flex flex-col">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-[#2D6A4F] mb-1">
-          {resource.category}
+        <div className="font-mono-num text-[10px] uppercase tracking-wider text-[#5A6475] mb-1 truncate">
+          {resource.ownerOrganization || resource.ownerName}
         </div>
-        <h3 className="text-sm font-bold text-[#1D2420] group-hover:text-[#1B4332] line-clamp-2 mb-1.5">
+        <h3 className="text-sm font-bold text-[#0B0F19] group-hover:text-[#0052FF] line-clamp-2 mb-1.5">
           {resource.title}
         </h3>
-        <p className="text-xs text-[#5C6460] line-clamp-2 mb-3 flex-1">{resource.description}</p>
+        <p className="text-xs text-[#5A6475] line-clamp-2 mb-3 flex-1">{resource.description}</p>
 
-        <div className="grid grid-cols-2 gap-2 text-xs py-2.5 border-y border-[#E4DFD7] mb-3">
+        <div className="grid grid-cols-2 gap-2 text-xs py-2.5 border-y border-[#E2E6EE] mb-3">
           <div>
-            <span className="text-[#5C6460] block text-[10px]">Quantity</span>
-            <span className="font-mono-num font-semibold text-[#1D2420]">
+            <span className="font-mono-num text-[#8A94A6] uppercase block text-[10px]">
+              QUANTITY
+            </span>
+            <span className="font-mono-num font-semibold text-[#0B0F19]">
               {resource.quantity} {resource.unit}
             </span>
           </div>
           <div>
-            <span className="text-[#5C6460] block text-[10px]">Condition</span>
-            <span className="font-medium text-[#1D2420]">{resource.condition}</span>
+            <span className="font-mono-num text-[#8A94A6] uppercase block text-[10px]">
+              CONDITION
+            </span>
+            <span className="font-semibold text-[#0B0F19]">{resource.condition}</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-[11px] text-[#5C6460]">
+        <div className="flex items-center justify-between text-[11px] text-[#5A6475] font-mono-num uppercase">
           <span className="flex items-center gap-1 truncate">
-            <MapPin className="w-3.5 h-3.5 text-[#2D6A4F] shrink-0" />
+            <MapPin className="w-3.5 h-3.5 text-[#0052FF] shrink-0" />
             <span className="truncate">
               {resource.area}
-              {distanceKm !== null ? ` (${distanceKm} km)` : ''}
+              {distanceKm !== null ? ` (${distanceKm} KM)` : ''}
             </span>
           </span>
-          <span className="flex items-center gap-1 shrink-0 ml-2">
-            <Clock className="w-3 h-3" />
-            By {resource.disposalDate}
+          <span className="inline-flex items-center gap-1 text-[#0B0F19] group-hover:text-[#0052FF] font-semibold shrink-0 ml-2">
+            BY {resource.disposalDate}
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </span>
         </div>
       </div>

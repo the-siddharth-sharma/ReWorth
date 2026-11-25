@@ -82,12 +82,13 @@ export const api = {
       body: JSON.stringify({ dataUrl }),
     }),
 
-  getResources: (params?: { category?: string; transferType?: string; search?: string; status?: string }) => {
+  getResources: (params?: { category?: string; transferType?: string; search?: string; status?: string; ownerId?: string }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set('category', params.category);
     if (params?.transferType) qs.set('transferType', params.transferType);
     if (params?.search) qs.set('search', params.search);
     if (params?.status) qs.set('status', params.status);
+    if (params?.ownerId) qs.set('ownerId', params.ownerId);
     return request<{ resources: Resource[] }>(`/api/resources?${qs.toString()}`);
   },
   getResourceDetail: (id: string) =>
@@ -123,16 +124,41 @@ export const api = {
     resourceId: string;
     needId?: string | null;
     requestedQuantity: number;
+    offeredResourceId?: string | null;
+    offeredQuantity?: number | null;
+    cashTopUpAmount?: number | null;
     initialNote: string;
   }) =>
     request<{ exchange: Exchange }>('/api/exchanges', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  updateExchangeStatus: (id: string, status: ExchangeStatus, ownerNote?: string) =>
-    request<{ exchange: Exchange }>(`/api/exchanges/${id}/status`, {
+  counterExchange: (
+    id: string,
+    payload: {
+      requestedQuantity?: number;
+      offeredResourceId?: string | null;
+      offeredQuantity?: number | null;
+      cashTopUpAmount?: number | null;
+      note?: string;
+    }
+  ) =>
+    request<{ exchange: Exchange }>(`/api/exchanges/${id}/counter`, {
       method: 'PATCH',
-      body: JSON.stringify({ status, ownerNote }),
+      body: JSON.stringify(payload),
+    }),
+  confirmExchangeHandover: (id: string, otp: string) =>
+    request<{ exchange: Exchange; awaitingCounterparty: boolean }>(
+      `/api/exchanges/${id}/confirm-handover`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ otp }),
+      }
+    ),
+  updateExchangeStatus: (id: string, status: ExchangeStatus, ownerNote?: string, otp?: string) =>
+    request<{ exchange: Exchange; awaitingCounterparty?: boolean }>(`/api/exchanges/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, ownerNote, otp }),
     }),
   sendExchangeMessage: (id: string, body: string) =>
     request<{ exchange: Exchange }>(`/api/exchanges/${id}/messages`, {

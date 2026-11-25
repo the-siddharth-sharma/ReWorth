@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --bg-page: #faf8f5;
-  --bg-subtle: #f3efea;
-  --bg-card: #ffffff;
-  --border-subtle: #e4dfd7;
-  --forest: #1b4332;
-  --forest-hover: #143326;
-  --fresh: #2d6a4f;
-  --fresh-soft: #e8f3ec;
-  --earth: #9c6b43;
-  --earth-soft: #f6efe8;
-  --text-main: #1d2420;
-  --text-muted: #5c6460;
+  --cobalt: #0052ff;
+  --cobalt-hover: #0040cc;
+  --cobalt-soft: #eef4ff;
+  --cobalt-border: #c7dbff;
+  --bg-page: #ffffff;
+  --bg-subtle: #f5f6f8;
+  --border-subtle: #e2e6ee;
+  --ink-primary: #0b0f19;
+  --ink-secondary: #5a6475;
+  --ink-micro: #8a94a6;
+  --obsidian-bg: #060b18;
+  --obsidian-card: #0e1528;
+  --obsidian-border: #1d2740;
+  --obsidian-text: #f8fafc;
 }
 
 body {
   margin: 0;
   background-color: var(--bg-page);
-  color: var(--text-main);
+  color: var(--ink-primary);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+.font-editorial {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-style: italic;
 }
 
 .font-mono-num {

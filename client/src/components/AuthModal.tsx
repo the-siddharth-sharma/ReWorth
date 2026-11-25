@@ -103,38 +103,40 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
   };
 
   const accountIcon = (t: AccountType, role: string) => {
-    if (role === 'admin') return <ShieldCheck className="w-4 h-4 text-[#1B4332]" />;
-    if (t === 'business') return <Building2 className="w-4 h-4 text-[#1B4332]" />;
-    if (t === 'student') return <GraduationCap className="w-4 h-4 text-[#1B4332]" />;
-    if (t === 'ngo') return <Users className="w-4 h-4 text-[#1B4332]" />;
-    return <UserIcon className="w-4 h-4 text-[#1B4332]" />;
+    if (role === 'admin') return <ShieldCheck className="w-4 h-4 text-[#0052FF]" />;
+    if (t === 'business') return <Building2 className="w-4 h-4 text-[#0052FF]" />;
+    if (t === 'student') return <GraduationCap className="w-4 h-4 text-[#0052FF]" />;
+    if (t === 'ngo') return <Users className="w-4 h-4 text-[#0052FF]" />;
+    return <UserIcon className="w-4 h-4 text-[#0052FF]" />;
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/45 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl border border-[#E4DFD7] max-w-2xl w-full shadow-xl overflow-hidden my-auto">
-        <div className="px-6 py-4 bg-[#FAF8F5] border-b border-[#E4DFD7] flex items-center justify-between">
+    <div className="fixed inset-0 z-50 bg-[#060B18]/70 flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] max-w-2xl w-full shadow-2xl overflow-hidden my-auto">
+        <div className="px-6 py-4 bg-[#060B18] text-[#F8FAFC] border-b border-[#1D2740] flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-[#1B4332]">Join or Switch Account</h2>
-            <p className="text-xs text-[#5C6460]">
+            <h2 className="font-mono-num text-xs font-bold uppercase tracking-widest text-[#F8FAFC]">
+              JOIN OR SWITCH ACCOUNT
+            </h2>
+            <p className="text-xs text-[#8A94A6] mt-0.5">
               Create a real local account or use a clearly labelled Demo Profile to test the workflow.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-[#5C6460] hover:bg-[#E4DFD7]/50 cursor-pointer"
+            className="p-1.5 rounded-[2px] text-[#8A94A6] hover:bg-[#0E1528] hover:text-white cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Mode Tabs */}
-        <div className="px-6 pt-4 flex gap-2 border-b border-[#E4DFD7]">
+        <div className="px-6 pt-3 flex gap-4 border-b border-[#E2E6EE] bg-[#F5F6F8]">
           {[
-            { id: 'demo', label: 'Demo Accounts (1-Click)' },
-            { id: 'register', label: 'Create Profile' },
-            { id: 'login', label: 'Sign In' },
+            { id: 'demo', label: '01 DEMO ACCOUNTS' },
+            { id: 'register', label: '02 CREATE PROFILE' },
+            { id: 'login', label: '03 SIGN IN' },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -143,10 +145,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                 setMode(tab.id as typeof mode);
                 setError(null);
               }}
-              className={`pb-3 px-2 text-sm font-semibold border-b-2 transition-colors cursor-pointer ${
+              className={`pb-3 px-1 font-mono-num text-[11px] font-semibold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
                 mode === tab.id
-                  ? 'border-[#1B4332] text-[#1B4332]'
-                  : 'border-transparent text-[#5C6460] hover:text-[#1D2420]'
+                  ? 'border-[#0052FF] text-[#0052FF]'
+                  : 'border-transparent text-[#5A6475] hover:text-[#0B0F19]'
               }`}
             >
               {tab.label}
@@ -156,17 +158,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
 
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+            <div className="mb-4 p-3 rounded-[2px] bg-red-50 border border-red-200 text-sm text-red-800">
               {error}
             </div>
           )}
 
           {mode === 'demo' && (
             <div className="space-y-3">
-              <div className="text-xs text-[#5C6460] bg-[#F6EFE8] border border-[#E6D6C5] rounded-lg p-3">
-                <strong>Sample Demo Profiles:</strong> These pre-seeded accounts represent the 5 core
-                ReWorth scenarios plus a Moderator role so you can test listing, matching, and
-                exchange approval end-to-end.
+              <div className="text-xs text-[#0B0F19] bg-[#EEF4FF] border border-[#C7DBFF] rounded-[2px] p-3">
+                <strong>Sample Demo Profiles:</strong> These pre-seeded accounts represent the core
+                ReWorth B2B &amp; student scenarios plus a Moderator role for instant end-to-end testing.
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {demoAccounts.map((acc) => (
@@ -175,22 +176,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                     type="button"
                     disabled={loading}
                     onClick={() => handleDemoLogin(acc.id)}
-                    className="text-left p-3.5 rounded-xl border border-[#E4DFD7] hover:border-[#1B4332] hover:bg-[#FAF8F5] transition-all cursor-pointer"
+                    className="text-left p-3.5 rounded-[2px] border border-[#E2E6EE] bg-[#FFFFFF] hover:border-[#0052FF] hover:bg-[#F5F6F8] transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="flex items-center gap-1.5 font-semibold text-sm text-[#1D2420]">
+                      <span className="flex items-center gap-1.5 font-bold text-sm text-[#0B0F19]">
                         {accountIcon(acc.accountType, acc.role)}
                         {acc.name}
                       </span>
-                      <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-[#E8F3EC] text-[#1B4332]">
+                      <span className="font-mono-num text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded-sm bg-[#EEF4FF] text-[#0052FF] border border-[#C7DBFF]">
                         {acc.role === 'admin' ? 'Admin' : acc.accountType}
                       </span>
                     </div>
-                    <div className="text-xs text-[#5C6460] mb-1">
+                    <div className="font-mono-num text-[10px] uppercase text-[#5A6475] mb-1">
                       {acc.organization ? `${acc.organization} · ` : ''}
                       {acc.area}
                     </div>
-                    {acc.bio && <p className="text-xs text-[#5C6460] line-clamp-2">{acc.bio}</p>}
+                    {acc.bio && <p className="text-xs text-[#5A6475] line-clamp-2">{acc.bio}</p>}
                   </button>
                 ))}
               </div>
@@ -200,33 +201,37 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#1D2420] mb-1">Email</label>
+                <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                  Email
+                </label>
                 <input
                   type="email"
                   required
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   placeholder="you@example.com"
-                  className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                  className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#1D2420] mb-1">Password</label>
+                <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                  Password
+                </label>
                 <input
                   type="password"
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                  className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-lg bg-[#1B4332] text-white text-sm font-semibold hover:bg-[#143326] disabled:opacity-50 cursor-pointer"
+                className="w-full py-2.5 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-xs font-semibold uppercase tracking-wider disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Signing in...' : 'Sign In ↗'}
               </button>
             </form>
           )}
@@ -235,7 +240,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                     Full Name / Contact Name *
                   </label>
                   <input
@@ -244,17 +249,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Priya Nair"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                     Account Type *
                   </label>
                   <select
                     value={accountType}
                     onChange={(e) => setAccountType(e.target.value as AccountType)}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
                   >
                     {ACCOUNT_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
@@ -267,18 +272,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">Email *</label>
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
+                    Email *
+                  </label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="priya@college.edu"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                     Password (min 6 chars) *
                   </label>
                   <input
@@ -288,14 +295,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                     Organization / College / Workshop
                   </label>
                   <input
@@ -303,17 +310,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                     value={organization}
                     onChange={(e) => setOrganization(e.target.value)}
                     placeholder="Optional"
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                  <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                     Neighborhood / Area *
                   </label>
                   <select
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white focus:outline-none focus:border-[#1B4332]"
+                    className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
                   >
                     {AREA_HUBS.map((hub) => (
                       <option key={hub.name} value={hub.name}>
@@ -325,7 +332,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1D2420] mb-1.5">
+                <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1.5">
                   Material Interests (used for personalized discovery)
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -336,10 +343,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                         key={cat}
                         type="button"
                         onClick={() => toggleInterest(cat)}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                        className={`px-2.5 py-1 rounded-[2px] font-mono-num text-[10px] font-semibold uppercase border transition-colors cursor-pointer ${
                           selected
-                            ? 'bg-[#1B4332] text-white border-[#1B4332]'
-                            : 'bg-[#FAF8F5] text-[#5C6460] border-[#E4DFD7] hover:border-[#1B4332]'
+                            ? 'bg-[#0052FF] text-white border-[#0052FF]'
+                            : 'bg-[#F5F6F8] text-[#5A6475] border-[#E2E6EE] hover:border-[#0B0F19]'
                         }`}
                       >
                         {cat}
@@ -350,7 +357,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                <label className="block font-mono-num text-[10px] font-semibold uppercase text-[#0B0F19] mb-1">
                   Short Bio / What You Make or Divert
                 </label>
                 <input
@@ -358,16 +365,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onAuthent
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="e.g. Architecture student building scale models from offcuts"
-                  className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm focus:outline-none focus:border-[#1B4332]"
+                  className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm focus:outline-none focus:border-[#0052FF]"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-lg bg-[#1B4332] text-white text-sm font-semibold hover:bg-[#143326] disabled:opacity-50 cursor-pointer"
+                className="w-full py-2.5 rounded-[2px] bg-[#0052FF] hover:bg-[#0040CC] text-white font-mono-num text-xs font-semibold uppercase tracking-wider disabled:opacity-50 cursor-pointer"
               >
-                {loading ? 'Creating Profile...' : 'Create Account & Start Matching'}
+                {loading ? 'Creating Profile...' : 'Create Account & Start Matching ↗'}
               </button>
             </form>
           )}

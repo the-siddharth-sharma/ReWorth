@@ -92,28 +92,33 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
 
   return (
     <div className="max-w-3xl mx-auto">
-      <div className="bg-white rounded-2xl border border-[#E4DFD7] p-6">
-        <h1 className="text-xl font-bold text-[#1B4332] mb-1">Post a Material Need</h1>
-        <p className="text-xs sm:text-sm text-[#5C6460] mb-5">
+      <div className="bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] p-6 sm:p-8">
+        <div className="font-mono-num text-[11px] font-semibold uppercase tracking-widest text-[#0052FF] mb-1">
+          ( 04 ) DEMAND SIGNAL
+        </div>
+        <h1 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-[#0B0F19] mb-1">
+          POST A MATERIAL <span className="text-[#0052FF]">NEED</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-[#5A6475] mb-6">
           Tell ReWorth what material you need and why. Our rule-based engine will immediately surface
           matching surplus resources nearby.
         </p>
 
         {!currentUser && (
-          <div className="mb-5 p-3.5 rounded-xl bg-[#F6EFE8] border border-[#E6D6C5] flex items-center justify-between gap-3 text-xs">
-            <span>Sign in or pick a Demo Account to post a live need.</span>
+          <div className="mb-5 p-3.5 rounded-[2px] bg-[#EEF4FF] border border-[#C7DBFF] flex items-center justify-between gap-3 text-xs">
+            <span className="text-[#0B0F19]">Sign in or pick a Demo Account to post a live need.</span>
             <button
               type="button"
               onClick={onRequireAuth}
-              className="px-3 py-1.5 rounded-lg bg-[#1B4332] text-white font-semibold cursor-pointer"
+              className="px-3.5 py-2 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-[11px] font-semibold uppercase cursor-pointer"
             >
-              Sign In / Demo
+              Sign In / Demo ↗
             </button>
           </div>
         )}
 
         {!liveSafety.safe && (
-          <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-900">
+          <div className="mb-4 p-3.5 rounded-[2px] bg-red-50 border border-red-200 flex items-start gap-2 text-xs text-red-900">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <div>
               <strong>Safety Policy Block:</strong> {liveSafety.reason}
@@ -122,14 +127,14 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
         )}
 
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-sm text-red-800">
+          <div className="mb-4 p-3 rounded-[2px] bg-red-50 border border-red-200 text-sm text-red-800">
             {error}
           </div>
         )}
 
         {createdMatches !== null && (
-          <div className="mb-5 p-4 rounded-xl bg-[#E8F3EC] border border-[#B7DFC5] space-y-2">
-            <div className="flex items-center gap-2 text-sm font-bold text-[#1B4332]">
+          <div className="mb-5 p-4 rounded-[2px] bg-[#ECFDF5] border border-[#A7F3D0] space-y-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#047857]">
               <CheckCircle2 className="w-4 h-4" />
               Need Posted! Found {createdMatches.length} matching available resource(s).
             </div>
@@ -137,11 +142,13 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
               <div
                 key={m.id}
                 onClick={() => onInspectResource(m.resource.id)}
-                className="p-2.5 rounded-lg bg-white border border-[#B7DFC5] text-xs cursor-pointer hover:border-[#1B4332]"
+                className="p-2.5 rounded-[2px] bg-white border border-[#A7F3D0] text-xs cursor-pointer hover:border-[#0052FF]"
               >
-                <span className="font-mono-num font-bold text-[#1B4332] mr-2">{m.score}% Match</span>
-                <span className="font-semibold text-[#1D2420]">{m.resource.title}</span> —{' '}
-                <span className="text-[#5C6460]">{m.reasons[0]}</span>
+                <span className="font-mono-num font-bold text-[#047857] mr-2">
+                  {m.score}% MATCH
+                </span>
+                <span className="font-semibold text-[#0B0F19]">{m.resource.title}</span> —{' '}
+                <span className="text-[#5A6475]">{m.reasons[0]}</span>
               </div>
             ))}
           </div>
@@ -150,7 +157,7 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 What material do you need? *
               </label>
               <input
@@ -159,16 +166,18 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Need 15 meters cotton or denim fabric for fashion thesis"
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] focus:bg-white text-sm focus:outline-none focus:border-[#0052FF]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">Category *</label>
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
+                Category *
+              </label>
               <select
                 value={category}
                 onChange={(e) => handleCategoryChange(e.target.value as ResourceCategory)}
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
               >
                 {CATEGORIES.map((c) => (
                   <option key={c.name} value={c.name}>
@@ -179,7 +188,7 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Material Keywords (comma-separated)
               </label>
               <input
@@ -187,12 +196,12 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                 value={materialTags}
                 onChange={(e) => setMaterialTags(e.target.value)}
                 placeholder="e.g. cotton, denim, fabric"
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] focus:bg-white text-sm focus:outline-none focus:border-[#0052FF]"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Purpose / Project Context *
               </label>
               <input
@@ -201,12 +210,12 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value)}
                 placeholder="e.g. College sustainable fashion design project / Small business shipping"
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] focus:bg-white text-sm focus:outline-none focus:border-[#0052FF]"
               />
             </div>
 
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Specifications &amp; Requirements *
               </label>
               <textarea
@@ -215,12 +224,12 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe acceptable sizes, condition, or minimum quality needed."
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] bg-[#F5F6F8] focus:bg-white text-sm focus:outline-none focus:border-[#0052FF]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Needed Quantity *
               </label>
               <div className="flex gap-2">
@@ -231,12 +240,12 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                   required
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="w-28 px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm font-mono-num"
+                  className="w-28 px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm font-mono-num focus:outline-none focus:border-[#0052FF]"
                 />
                 <select
                   value={unit}
                   onChange={(e) => setUnit(e.target.value)}
-                  className="flex-1 px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+                  className="flex-1 px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
                 >
                   {selectedCategoryMeta.defaultUnits.map((u) => (
                     <option key={u} value={u}>
@@ -248,13 +257,13 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Your Area / Pickup Radius Center *
               </label>
               <select
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
               >
                 {AREA_HUBS.map((hub) => (
                   <option key={hub.name} value={hub.name}>
@@ -265,7 +274,7 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Needed By Deadline *
               </label>
               <input
@@ -273,18 +282,18 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                 required
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm font-mono-num focus:outline-none focus:border-[#0052FF]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+              <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                 Budget / Transfer Preference
               </label>
               <select
                 value={preferredTransfer}
                 onChange={(e) => setPreferredTransfer(e.target.value as Need['preferredTransfer'])}
-                className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm bg-white"
+                className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm bg-white focus:outline-none focus:border-[#0052FF]"
               >
                 <option value="free_only">Free only</option>
                 <option value="free_or_exchange">Free or Exchange / Barter</option>
@@ -294,7 +303,7 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
 
             {preferredTransfer === 'low_cost_ok' && (
               <div>
-                <label className="block text-xs font-semibold text-[#1D2420] mb-1">
+                <label className="block font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0B0F19] mb-1">
                   Optional Max Budget (₹)
                 </label>
                 <input
@@ -302,7 +311,7 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
                   min={0}
                   value={maxBudget}
                   onChange={(e) => setMaxBudget(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-[#E4DFD7] text-sm font-mono-num"
+                  className="w-full px-3 py-2 rounded-[2px] border border-[#E2E6EE] text-sm font-mono-num focus:outline-none focus:border-[#0052FF]"
                 />
               </div>
             )}
@@ -311,9 +320,11 @@ export const PostNeedView: React.FC<PostNeedViewProps> = ({
           <button
             type="submit"
             disabled={submitting || !liveSafety.safe}
-            className="w-full py-3 rounded-xl bg-[#1B4332] text-white text-sm font-semibold hover:bg-[#143326] disabled:opacity-50 cursor-pointer"
+            className="w-full py-3 rounded-[2px] bg-[#0B0F19] hover:bg-[#0052FF] text-white font-mono-num text-xs font-semibold uppercase tracking-wider disabled:opacity-50 cursor-pointer transition-colors"
           >
-            {submitting ? 'Posting Need & Matching...' : 'Post Need & Find Available Resources'}
+            {submitting
+              ? 'Posting Need & Matching...'
+              : 'Post Need & Find Available Resources ↗'}
           </button>
         </form>
       </div>

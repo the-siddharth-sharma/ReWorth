@@ -2,7 +2,11 @@ import { DatabaseSync } from 'node:sqlite';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const IS_VERCEL = process.env.VERCEL === '1';
+const REPO_ROOT = fs.existsSync(path.resolve(process.cwd(), 'uploads'))
+  ? process.cwd()
+  : path.resolve(process.cwd(), '..');
+const DATA_DIR = IS_VERCEL ? path.join('/tmp', 'reworth-data') : path.join(REPO_ROOT, 'data');
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
@@ -123,3 +127,28 @@ db.exec(`
     resolved_at TEXT
   );
 `);
+
+// Safe migrations for two-way barter trade & dual handover columns on existing SQLite databases
+const exchangeCols = db.prepare('PRAGMA table_info(exchanges)').all() as Array<{ name: string }>;
+const exchangeColNames = new Set(exchangeCols.map((c) => c.name));
+if (!exchangeColNames.has('offered_resource_id')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN offered_resource_id TEXT');
+}
+if (!exchangeColNames.has('offered_quantity')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN offered_quantity REAL');
+}
+if (!exchangeColNames.has('cash_top_up_amount')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN cash_top_up_amount REAL DEFAULT 0');
+}
+if (!exchangeColNames.has('last_counter_by')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN last_counter_by TEXT');
+}
+if (!exchangeColNames.has('owner_confirmed')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN owner_confirmed INTEGER NOT NULL DEFAULT 0');
+}
+if (!exchangeColNames.has('requester_confirmed')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN requester_confirmed INTEGER NOT NULL DEFAULT 0');
+}
+if (!exchangeColNames.has('handover_otp')) {
+  db.exec('ALTER TABLE exchanges ADD COLUMN handover_otp TEXT');
+}

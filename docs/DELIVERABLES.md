@@ -109,11 +109,21 @@ npm run dev
 - Frontend runs at `http://localhost:5173`
 - Backend API runs at `http://localhost:3001`
 
-### Production Build & Serving
+### Deploying to Vercel
+The repository includes `vercel.json`, `api/index.ts`, Node `24.x` engine configuration, and static sample assets in `client/public/uploads/`:
+```bash
+npx vercel --prod
+```
+Or connect the Git repository in the Vercel Dashboard (framework preset: **Other** / auto-detected from `vercel.json`):
+- Static frontend builds to `client/dist`.
+- `/api/*` requests rewrite to the serverless Express handler `api/index.ts`.
+- **Serverless Storage Caveat**: Because Vercel Functions run on a read-only filesystem outside `/tmp`, when `VERCEL=1` is set, SQLite writes to `/tmp/reworth-data/reworth.sqlite` (ephemeral across cold starts) and `/api/upload` returns validated data URLs. For permanent production persistence across regions/cold starts, connect an external database (e.g., Turso/libSQL or Neon Postgres) and Vercel Blob for uploads.
+
+### Production Build & Self-Hosting
 ```bash
 npm run build
 npm run start
 ```
 To serve the built `client/dist` behind a reverse proxy (Nginx/Caddy) or Render/Railway:
 1. Build both packages (`npm run build`).
-2. Host `server/dist/server/src/index.js` on a persistent Node 22+ volume (so `server/data/reworth.sqlite` and `uploads/` persist across restarts) and serve `client/dist` as static assets routing `/api` and `/uploads` to the Node server.
+2. Host `server/dist/server/src/index.js` on a persistent Node 22+ volume (so `data/reworth.sqlite` and `uploads/` persist across restarts) and serve `client/dist` as static assets routing `/api` and `/uploads` to the Node server.

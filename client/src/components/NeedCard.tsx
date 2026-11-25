@@ -1,66 +1,77 @@
 import React from 'react';
-import { MapPin, Calendar, Target } from 'lucide-react';
+import { ArrowUpRight, MapPin, Target } from 'lucide-react';
 import type { Need } from '../../../shared/types.ts';
 
 interface NeedCardProps {
   need: Need;
+  index?: number;
   onSelect: (needId: string) => void;
 }
 
-export const NeedCard: React.FC<NeedCardProps> = ({ need, onSelect }) => {
+export const NeedCard: React.FC<NeedCardProps> = ({ need, index, onSelect }) => {
   return (
     <div
       onClick={() => onSelect(need.id)}
-      className="bg-white rounded-2xl border border-[#E4DFD7] p-4 hover:border-[#1B4332] transition-all cursor-pointer flex flex-col justify-between"
+      className="group bg-[#FFFFFF] rounded-[2px] border border-[#E2E6EE] p-4 hover:border-[#0052FF] transition-colors cursor-pointer flex flex-col justify-between"
     >
       <div>
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[#9C6B43]">
+        <div className="flex items-center justify-between gap-2 pb-2.5 mb-3 border-b border-[#E2E6EE]">
+          <span className="font-mono-num text-[10px] font-semibold uppercase tracking-wider text-[#0052FF] truncate">
+            {index !== undefined ? `${String(index).padStart(2, '0')} // ` : ''}
             {need.category}
           </span>
-          {need.isSample && (
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#F6EFE8] text-[#9C6B43] border border-[#E6D6C5]">
-              Sample Data
+          {need.isSample ? (
+            <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#F5F6F8] text-[#5A6475] border border-[#E2E6EE]">
+              SAMPLE DATA
+            </span>
+          ) : (
+            <span className="font-mono-num text-[10px] font-semibold uppercase px-2 py-0.5 rounded-sm bg-[#ECFDF5] text-[#047857] border border-[#A7F3D0]">
+              OPEN NEED
             </span>
           )}
         </div>
 
-        <h3 className="text-sm font-bold text-[#1D2420] mb-1.5 line-clamp-2">{need.title}</h3>
-        <p className="text-xs text-[#5C6460] line-clamp-2 mb-3">{need.description}</p>
+        <div className="font-mono-num text-[10px] uppercase tracking-wider text-[#8A94A6] mb-1 truncate">
+          {need.requesterOrganization || need.requesterName}
+        </div>
+        <h3 className="text-sm font-bold text-[#0B0F19] group-hover:text-[#0052FF] mb-1.5 line-clamp-2">
+          {need.title}
+        </h3>
+        <p className="text-xs text-[#5A6475] line-clamp-2 mb-3">{need.description}</p>
 
-        <div className="bg-[#FAF8F5] rounded-xl p-2.5 border border-[#E4DFD7] mb-3 text-xs space-y-1">
-          <div className="flex items-center gap-1.5 text-[#1D2420]">
-            <Target className="w-3.5 h-3.5 text-[#2D6A4F] shrink-0" />
+        <div className="bg-[#F5F6F8] rounded-[2px] p-2.5 border border-[#E2E6EE] mb-3 text-xs space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[#0B0F19]">
+            <Target className="w-3.5 h-3.5 text-[#0052FF] shrink-0" />
             <span className="truncate">
               <strong>Purpose:</strong> {need.purpose}
             </span>
           </div>
-          <div className="flex items-center justify-between text-[#5C6460]">
+          <div className="flex items-center justify-between font-mono-num text-[11px] text-[#5A6475] uppercase">
             <span>
-              Needs:{' '}
-              <strong className="font-mono-num text-[#1D2420]">
+              REQ:{' '}
+              <strong className="text-[#0B0F19]">
                 {need.quantity} {need.unit}
               </strong>
             </span>
             <span>
               {need.preferredTransfer === 'free_only'
-                ? 'Free only'
+                ? 'FREE ONLY'
                 : need.preferredTransfer === 'free_or_exchange'
-                  ? 'Free / Exchange'
-                  : `Budget ≤ ₹${need.maxBudget ?? 'N/A'}`}
+                  ? 'FREE / BARTER'
+                  : `BUDGET ≤ ₹${need.maxBudget ?? 'N/A'}`}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-[11px] text-[#5C6460] pt-2 border-t border-[#E4DFD7]">
+      <div className="flex items-center justify-between font-mono-num text-[11px] uppercase text-[#5A6475] pt-2.5 border-t border-[#E2E6EE]">
         <span className="flex items-center gap-1 truncate">
-          <MapPin className="w-3.5 h-3.5 text-[#2D6A4F] shrink-0" />
+          <MapPin className="w-3.5 h-3.5 text-[#0052FF] shrink-0" />
           {need.area}
         </span>
-        <span className="flex items-center gap-1 shrink-0">
-          <Calendar className="w-3 h-3" />
-          Needed by {need.deadline}
+        <span className="inline-flex items-center gap-1 text-[#0B0F19] group-hover:text-[#0052FF] font-semibold shrink-0">
+          BY {need.deadline}
+          <ArrowUpRight className="w-3.5 h-3.5" />
         </span>
       </div>
     </div>

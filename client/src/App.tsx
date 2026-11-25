@@ -92,11 +92,11 @@ export function App() {
   };
 
   const pendingExchangesCount = exchanges.filter(
-    (e) => e.status === 'pending' || e.status === 'accepted'
+    (e) => e.status === 'pending' || e.status === 'countered' || e.status === 'accepted'
   ).length;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5] text-[#1D2420]">
+    <div className="min-h-screen flex flex-col bg-[#FFFFFF] text-[#0B0F19]">
       <Navbar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -150,6 +150,7 @@ export function App() {
         {activeTab === 'exchanges' && (
           <ExchangesView
             exchanges={exchanges}
+            allResources={resources}
             currentUser={user}
             onRequireAuth={() => setAuthOpen(true)}
             onRefresh={refreshAll}
@@ -176,9 +177,15 @@ export function App() {
         )}
       </main>
 
-      <footer className="border-t border-[#E4DFD7] bg-white py-4 px-4 text-center text-xs text-[#5C6460]">
-        ReWorth Circular Resource Exchange · Rule-based matching (no AI claims) · Direct local
-        pickup only (no physical delivery integrated) · Hazardous materials &amp; medicines prohibited.
+      <footer className="border-t border-[#1D2740] bg-[#060B18] text-[#F8FAFC] py-6 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="font-mono-num text-[11px] uppercase tracking-wider text-[#F8FAFC]">
+            REWORTH // B2B &amp; COMMUNITY CIRCULAR RESOURCE EXCHANGE
+          </div>
+          <div className="font-mono-num text-[11px] text-[#8A94A6]">
+            RULE-BASED MATCHING (NO AI CLAIMS) · DIRECT LOCAL HANDOVER · HAZARDOUS &amp; MEDICAL GOODS PROHIBITED
+          </div>
+        </div>
       </footer>
 
       <AuthModal
@@ -189,6 +196,7 @@ export function App() {
 
       <DetailModal
         target={detailTarget}
+        allResources={resources}
         currentUser={user}
         onClose={() => setDetailTarget(null)}
         onRequireAuth={() => setAuthOpen(true)}
